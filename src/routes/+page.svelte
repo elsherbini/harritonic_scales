@@ -43,7 +43,7 @@
     selectedNotes.size > 0 ? Pcset.chroma([...selectedNotes]) : null
   );
 
-  function isNoteHighlighted(note: string, scaleChroma: string): boolean {
+  function isNoteHighlighted(note: string): boolean {
     if (!selectedChroma) return false;
     const noteChroma = Pcset.chroma([note]);
     for (let i = 0; i < 12; i++) {
@@ -93,7 +93,7 @@
               <div class="flex gap-1.5 flex-wrap">
                 {#each Pcset.notes(scale.chroma) as note}
                   <span
-                    class="px-1.5 py-0.5 rounded text-sm font-mono {isNoteHighlighted(note, scale.chroma)
+                    class="px-1.5 py-0.5 rounded text-sm font-mono {isNoteHighlighted(note)
                       ? 'bg-blue-100 text-blue-800 font-semibold'
                       : 'text-gray-600'}"
                   >
