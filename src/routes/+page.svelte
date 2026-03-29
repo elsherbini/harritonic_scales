@@ -101,6 +101,22 @@
     return map;
   });
 
+  // --- Key note dim7 group colors ---
+  const KEY_COLORS: Record<string, string> = {
+    'C': 'rgb(240, 154, 65)', 'Eb': 'rgb(240, 154, 65)', 'Gb': 'rgb(240, 154, 65)', 'A': 'rgb(240, 154, 65)',
+    'Db': 'rgb(119, 65, 240)', 'E': 'rgb(119, 65, 240)', 'G': 'rgb(119, 65, 240)', 'Bb': 'rgb(119, 65, 240)',
+    'F': 'rgb(41, 240, 67)', 'B': 'rgb(41, 240, 67)', 'D': 'rgb(41, 240, 67)', 'Ab': 'rgb(41, 240, 67)',
+  };
+
+  let selectedRootColor = $derived(selectedRoot ? KEY_COLORS[selectedRoot] : null);
+
+  // --- Target note dim7 group colors ---
+  const DIM7_COLORS: Record<string, string> = {
+    'C': 'rgb(239, 227, 65)', 'Eb': 'rgb(239, 227, 65)', 'Gb': 'rgb(239, 227, 65)', 'A': 'rgb(239, 227, 65)',
+    'G': 'rgb(240, 41, 93)', 'E': 'rgb(240, 41, 93)', 'Bb': 'rgb(240, 41, 93)', 'Db': 'rgb(240, 41, 93)',
+    'B': 'rgb(86, 180, 233)', 'D': 'rgb(86, 180, 233)', 'F': 'rgb(86, 180, 233)', 'Ab': 'rgb(86, 180, 233)',
+  };
+
   // --- Note highlighting ---
   let selectedChroma = $derived(
     selectedNotes.size > 0 ? Pcset.chroma([...selectedNotes]) : null
@@ -136,8 +152,11 @@
       {#each NOTE_NAMES as note}
         <button
           class="chip font-mono {selectedRoot === note
-            ? 'preset-filled-success-500'
+            ? ''
             : 'preset-outlined-surface-500'}"
+          style={selectedRoot === note
+            ? `background-color: ${KEY_COLORS[note]}; color: var(--color-surface-950);`
+            : ''}
           onclick={() => selectRoot(note)}
         >
           {note}
@@ -153,24 +172,37 @@
     <div class="flex flex-wrap gap-2 mb-3">
       <button
         class="chip {selectedQuality === 'major'
-          ? 'preset-filled-success-500'
+          ? ''
           : 'preset-outlined-surface-500'}"
+        style={selectedQuality === 'major'
+          ? selectedRootColor
+            ? `background-color: ${selectedRootColor}; color: var(--color-surface-950);`
+            : 'background-color: light-dark(var(--color-surface-950), var(--color-surface-50)); color: light-dark(var(--color-surface-50), var(--color-surface-950));'
+          : ''}
         onclick={() => selectQuality('major')}
       >
         Major
       </button>
       <button
         class="chip {selectedQuality === 'minor'
-          ? 'preset-filled-success-500'
+          ? ''
           : 'preset-outlined-surface-500'}"
+        style={selectedQuality === 'minor'
+          ? selectedRootColor
+            ? `background-color: ${selectedRootColor}; color: var(--color-surface-950);`
+            : 'background-color: light-dark(var(--color-surface-950), var(--color-surface-50)); color: light-dark(var(--color-surface-50), var(--color-surface-950));'
+          : ''}
         onclick={() => selectQuality('minor')}
       >
         Natural Minor
       </button>
       <select
-        class="select text-sm max-w-48 {isSomethingElse(selectedQuality)
-          ? 'preset-filled-success-500'
-          : ''}"
+        class="select text-sm max-w-48"
+        style={isSomethingElse(selectedQuality)
+          ? selectedRootColor
+            ? `background-color: ${selectedRootColor}; color: var(--color-surface-950);`
+            : 'background-color: light-dark(var(--color-surface-950), var(--color-surface-50)); color: light-dark(var(--color-surface-50), var(--color-surface-950));'
+          : ''}
         onchange={(e) => {
           const val = (e.target as HTMLSelectElement).value;
           if (val) selectQuality(val); else selectedQuality = null;
@@ -209,8 +241,11 @@
       {#each NOTE_NAMES as note}
         <button
           class="chip font-mono {selectedNotes.has(note)
-            ? 'preset-filled-primary-500'
+            ? ''
             : 'preset-outlined-surface-500'}"
+          style={selectedNotes.has(note)
+            ? `background-color: ${DIM7_COLORS[note]}; color: var(--color-surface-950);`
+            : ''}
           onclick={() => toggleNote(note)}
         >
           {note}

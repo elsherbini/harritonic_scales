@@ -21,7 +21,8 @@
 
   $effect(() => {
     if (!browser) return;
-    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.setAttribute('data-mode', dark ? 'dark' : 'light');
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   });
 </script>
