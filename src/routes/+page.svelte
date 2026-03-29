@@ -2,6 +2,7 @@
   import { Pcset } from 'tonal';
   import { ALL_SCALES } from '$lib/scales';
   import { filterScales } from '$lib/filter';
+  import ScaleDiagram from '$lib/ScaleDiagram.svelte';
 
   const NOTE_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
@@ -79,6 +80,11 @@
     <p class="text-sm text-gray-500">
       Showing {filteredScales.length} of {ALL_SCALES.length} scales
     </p>
+  </div>
+
+  <!-- Scale Diagram -->
+  <div class="mb-6">
+    <ScaleDiagram filteredScaleNames={filteredScales.map(s => s.name)} />
   </div>
 
   <!-- Scale List -->
