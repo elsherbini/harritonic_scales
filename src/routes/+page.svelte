@@ -126,25 +126,25 @@
 </script>
 
 <main class="max-w-3xl mx-auto px-4 py-8">
-  <h1 class="text-2xl font-bold mb-1">Harritonic Scales</h1>
-  <p class="text-sm text-gray-500 mb-6">Pick a scale for a chord from outside the key</p>
+  <h1 class="h1 mb-1">Harritonic Scales</h1>
+  <p class="text-sm text-surface-500 mb-6">Pick a scale for a chord from outside the key</p>
 
   <!-- Key Selector -->
   <div class="mb-6">
-    <h2 class="text-sm font-semibold text-gray-500 tracking-wide mb-2">Key: If you are in the key of...</h2>
+    <h2 class="text-sm font-semibold text-surface-500 tracking-wide mb-2">Key: If you are in the key of...</h2>
     <div class="flex flex-wrap gap-2 mb-3">
       {#each NOTE_NAMES as note}
         <button
-          class="px-3 py-2 rounded font-mono text-sm border transition-colors {selectedRoot === note
-            ? 'bg-green-600 text-white border-green-600'
-            : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+          class="chip font-mono {selectedRoot === note
+            ? 'preset-filled-success-500'
+            : 'preset-outlined-surface-500'}"
           onclick={() => selectRoot(note)}
         >
           {note}
         </button>
       {/each}
       <button
-        class="px-3 py-2 rounded text-sm border border-gray-300 text-gray-500 hover:border-gray-400 transition-colors"
+        class="btn btn-sm preset-tonal-surface"
         onclick={clearKey}
       >
         Clear
@@ -152,25 +152,25 @@
     </div>
     <div class="flex flex-wrap gap-2 mb-3">
       <button
-        class="px-3 py-2 rounded text-sm border transition-colors {selectedQuality === 'major'
-          ? 'bg-green-600 text-white border-green-600'
-          : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+        class="chip {selectedQuality === 'major'
+          ? 'preset-filled-success-500'
+          : 'preset-outlined-surface-500'}"
         onclick={() => selectQuality('major')}
       >
         Major
       </button>
       <button
-        class="px-3 py-2 rounded text-sm border transition-colors {selectedQuality === 'minor'
-          ? 'bg-green-600 text-white border-green-600'
-          : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+        class="chip {selectedQuality === 'minor'
+          ? 'preset-filled-success-500'
+          : 'preset-outlined-surface-500'}"
         onclick={() => selectQuality('minor')}
       >
         Natural Minor
       </button>
       <select
-        class="px-3 py-2 rounded text-sm border transition-colors {isSomethingElse(selectedQuality)
-          ? 'bg-green-600 text-white border-green-600'
-          : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+        class="select text-sm max-w-48 {isSomethingElse(selectedQuality)
+          ? 'preset-filled-success-500'
+          : ''}"
         onchange={(e) => {
           const val = (e.target as HTMLSelectElement).value;
           if (val) selectQuality(val); else selectedQuality = null;
@@ -196,7 +196,7 @@
       </select>
     </div>
     {#if selectedKey}
-      <p class="text-sm text-gray-500">
+      <p class="text-sm text-surface-500">
         Key: {selectedKey.name} — {selectedKey.notes.join(', ')}
       </p>
     {/if}
@@ -204,20 +204,20 @@
 
   <!-- Target Notes -->
   <div class="mb-6">
-    <h2 class="text-sm font-semibold text-gray-500 tracking-wide mb-2">Target Notes: And you are playing a chord with these notes...</h2>
+    <h2 class="text-sm font-semibold text-surface-500 tracking-wide mb-2">Target Notes: And you are playing a chord with these notes...</h2>
     <div class="flex flex-wrap gap-2 mb-3">
       {#each NOTE_NAMES as note}
         <button
-          class="px-3 py-2 rounded font-mono text-sm border transition-colors {selectedNotes.has(note)
-            ? 'bg-blue-600 text-white border-blue-600'
-            : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+          class="chip font-mono {selectedNotes.has(note)
+            ? 'preset-filled-primary-500'
+            : 'preset-outlined-surface-500'}"
           onclick={() => toggleNote(note)}
         >
           {note}
         </button>
       {/each}
       <button
-        class="px-3 py-2 rounded text-sm border border-gray-300 text-gray-500 hover:border-gray-400 transition-colors"
+        class="btn btn-sm preset-tonal-surface"
         onclick={clearSelection}
       >
         Clear
@@ -226,7 +226,7 @@
   </div>
 
   <!-- Results Count -->
-  <p class="text-sm text-gray-500 mb-4">
+  <p class="text-sm text-surface-500 mb-4">
     Showing {filteredScales.length} of {ALL_SCALES.length} scales
   </p>
 
@@ -235,29 +235,28 @@
     <ScaleDiagram {scaleSaturations} />
   </div>
 
-  <p class="text-sm text-gray-500 mb-4">You could use the following scales, sorted by how consonant they are</p>
+  <p class="text-sm text-surface-500 mb-4">You could use the following scales, sorted by how consonant they are</p>
 
   <!-- Scale List: grouped by overlap when key active, by type otherwise -->
   {#if selectedKey}
     {#each overlapGroups as group}
       <section class="mb-6">
-        <h2 class="text-lg font-semibold mb-2 text-gray-700">
+        <h2 class="h4 mb-2">
           {group.overlap} of {selectedKey.notes.length} key notes
         </h2>
         <div class="space-y-2">
           {#each group.scales as scale}
-            <div class="p-3 border border-gray-200 rounded">
+            <div class="card preset-outlined-surface-200-800 p-3">
               <div class="flex items-baseline gap-2 mb-1">
                 <span class="font-medium">{scale.name}</span>
-                <span class="text-xs text-gray-400">{group.overlap}/{selectedKey.notes.length}</span>
+                <span class="text-xs text-surface-400">{group.overlap}/{selectedKey.notes.length}</span>
               </div>
               <div class="flex gap-1.5 flex-wrap">
                 {#each Pcset.notes(scale.chroma) as note}
                   <span
-                    class="px-1.5 py-0.5 rounded text-sm font-mono text-gray-600"
+                    class="px-1.5 py-0.5 rounded text-sm font-mono"
                     class:font-bold={isKeyNote(note)}
                     class:underline={isTargetNote(note)}
-                    class:decoration-black={isTargetNote(note)}
                     class:decoration-2={isTargetNote(note)}
                     class:underline-offset-2={isTargetNote(note)}
                   >
@@ -274,17 +273,16 @@
     {#each Object.entries(groupedByType) as [type, scales]}
       {#if scales.length > 0}
         <section class="mb-6">
-          <h2 class="text-lg font-semibold mb-2 text-gray-700">{TYPE_LABELS[type]}</h2>
+          <h2 class="h4 mb-2">{TYPE_LABELS[type]}</h2>
           <div class="space-y-2">
             {#each scales as scale}
-              <div class="p-3 border border-gray-200 rounded">
+              <div class="card preset-outlined-surface-200-800 p-3">
                 <div class="font-medium mb-1">{scale.name}</div>
                 <div class="flex gap-1.5 flex-wrap">
                   {#each Pcset.notes(scale.chroma) as note}
                     <span
-                      class="px-1.5 py-0.5 rounded text-sm font-mono text-gray-600"
+                      class="px-1.5 py-0.5 rounded text-sm font-mono"
                       class:underline={isTargetNote(note)}
-                      class:decoration-black={isTargetNote(note)}
                       class:decoration-2={isTargetNote(note)}
                       class:underline-offset-2={isTargetNote(note)}
                     >
