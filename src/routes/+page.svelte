@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Pcset, Scale } from 'tonal';
   import { ALL_SCALES } from '$lib/scales';
-  import { filterScales, groupByKeyOverlap } from '$lib/filter';
+  import { filterScales, groupByKeyOverlap, countKeyOverlap } from '$lib/filter';
   import type { OverlapGroup } from '$lib/filter';
   import ScaleDiagram from '$lib/ScaleDiagram.svelte';
 
@@ -83,6 +83,23 @@
   let overlapGroups = $derived<OverlapGroup[]>(
     selectedKey ? groupByKeyOverlap(filteredScales, selectedKey.chroma) : []
   );
+
+  // --- Diagram saturation ---
+  let scaleSaturations = $derived.by(() => {
+    const filteredSet = new Set(filteredScales.map(s => s.name));
+    const map = new Map<string, number>();
+    for (const scale of ALL_SCALES) {
+      if (!filteredSet.has(scale.name)) {
+        map.set(scale.name, 0);
+      } else if (selectedKey) {
+        const overlap = countKeyOverlap(selectedKey.chroma, scale.chroma);
+        map.set(scale.name, overlap / selectedKey.notes.length);
+      } else {
+        map.set(scale.name, 1);
+      }
+    }
+    return map;
+  });
 
   // --- Note highlighting ---
   let selectedChroma = $derived(
@@ -187,7 +204,7 @@
 
   <!-- Target Notes -->
   <div class="mb-6">
-    <h2 class="text-sm font-semibold text-gray-500 tracking-wide mb-2">Target Notes: And you are playing a chord with these notes:</h2>
+    <h2 class="text-sm font-semibold text-gray-500 tracking-wide mb-2">Target Notes: And you are playing a chord with these notes...</h2>
     <div class="flex flex-wrap gap-2 mb-3">
       {#each NOTE_NAMES as note}
         <button
@@ -215,10 +232,10 @@
 
   <!-- Scale Diagram -->
   <div class="mb-6">
-    <ScaleDiagram filteredScaleNames={filteredScales.map(s => s.name)} />
+    <ScaleDiagram {scaleSaturations} />
   </div>
 
-  <p class="text-sm text-gray-500 mb-4">You could use the following scales, sorted by how consonant they could sound</p>
+  <p class="text-sm text-gray-500 mb-4">You could use the following scales, sorted by how consonant they are</p>
 
   <!-- Scale List: grouped by overlap when key active, by type otherwise -->
   {#if selectedKey}

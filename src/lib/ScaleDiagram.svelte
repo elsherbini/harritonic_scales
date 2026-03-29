@@ -1,17 +1,17 @@
 <script lang="ts">
   import svgRaw from '$lib/assets/scales-tagged.svg?raw';
 
-  let { filteredScaleNames }: { filteredScaleNames: string[] } = $props();
+  let { scaleSaturations }: { scaleSaturations: Map<string, number> } = $props();
 
   let container: HTMLDivElement;
 
   $effect(() => {
     if (!container) return;
-    const filteredSet = new Set(filteredScaleNames);
     const shapes = container.querySelectorAll('[data-scale]');
     for (const el of shapes) {
       const name = el.getAttribute('data-scale')!;
-      el.classList.toggle('dimmed', !filteredSet.has(name));
+      const saturation = scaleSaturations.get(name) ?? 0;
+      (el as HTMLElement).style.filter = `saturate(${saturation})`;
     }
   });
 </script>
@@ -31,9 +31,5 @@
 
   .scale-diagram :global([data-scale]) {
     transition: filter 0.2s;
-  }
-
-  .scale-diagram :global([data-scale].dimmed) {
-    filter: saturate(0);
   }
 </style>
