@@ -7,9 +7,14 @@
 
   const NOTE_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
-  const MAJOR_MODES = Scale.modeNames('major').map(m => m[1]);
+  const ALL_MAJOR_MODES = Scale.modeNames('major').map(m => m[1]);
   const HARMONIC_MINOR_MODES = Scale.modeNames('harmonic minor').map(m => m[1]);
   const MELODIC_MINOR_MODES = Scale.modeNames('melodic minor').map(m => m[1]);
+
+  // "Something Else" dropdown: other major modes (not "major" or "minor"), then harmonic/melodic minor
+  const OTHER_MAJOR_MODES = ALL_MAJOR_MODES.filter(m => m !== 'major' && m !== 'minor');
+  const SOMETHING_ELSE_MODES = [...OTHER_MAJOR_MODES, ...HARMONIC_MINOR_MODES, ...MELODIC_MINOR_MODES];
+  const isSomethingElse = (q: string | null) => q !== null && q !== 'major' && q !== 'minor';
 
   // --- Target Notes state ---
   let selectedNotes = $state<Set<string>>(new Set());
@@ -31,8 +36,8 @@
   }
 
   // --- Key state ---
-  let selectedRoot = $state<string | null>(null);
-  let selectedQuality = $state<string | null>(null);
+  let selectedRoot = $state<string | null>('C');
+  let selectedQuality = $state<string | null>('major');
 
   let selectedKey = $derived.by(() => {
     if (!selectedRoot || !selectedQuality) return null;
@@ -104,11 +109,85 @@
 </script>
 
 <main class="max-w-3xl mx-auto px-4 py-8">
-  <h1 class="text-2xl font-bold mb-6">Barry Harris Scale Filter</h1>
+  <h1 class="text-2xl font-bold mb-1">Harritonic Scales</h1>
+  <p class="text-sm text-gray-500 mb-6">Pick a scale for a chord from outside the key</p>
+
+  <!-- Key Selector -->
+  <div class="mb-6">
+    <h2 class="text-sm font-semibold text-gray-500 tracking-wide mb-2">Key: If you are in the key of...</h2>
+    <div class="flex flex-wrap gap-2 mb-3">
+      {#each NOTE_NAMES as note}
+        <button
+          class="px-3 py-2 rounded font-mono text-sm border transition-colors {selectedRoot === note
+            ? 'bg-green-600 text-white border-green-600'
+            : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+          onclick={() => selectRoot(note)}
+        >
+          {note}
+        </button>
+      {/each}
+      <button
+        class="px-3 py-2 rounded text-sm border border-gray-300 text-gray-500 hover:border-gray-400 transition-colors"
+        onclick={clearKey}
+      >
+        Clear
+      </button>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-3">
+      <button
+        class="px-3 py-2 rounded text-sm border transition-colors {selectedQuality === 'major'
+          ? 'bg-green-600 text-white border-green-600'
+          : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+        onclick={() => selectQuality('major')}
+      >
+        Major
+      </button>
+      <button
+        class="px-3 py-2 rounded text-sm border transition-colors {selectedQuality === 'minor'
+          ? 'bg-green-600 text-white border-green-600'
+          : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+        onclick={() => selectQuality('minor')}
+      >
+        Natural Minor
+      </button>
+      <select
+        class="px-3 py-2 rounded text-sm border transition-colors {isSomethingElse(selectedQuality)
+          ? 'bg-green-600 text-white border-green-600'
+          : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
+        onchange={(e) => {
+          const val = (e.target as HTMLSelectElement).value;
+          if (val) selectQuality(val); else selectedQuality = null;
+        }}
+        value={isSomethingElse(selectedQuality) ? selectedQuality : ''}
+      >
+        <option value="">Something Else...</option>
+        <optgroup label="Major Modes">
+          {#each OTHER_MAJOR_MODES as mode}
+            <option value={mode}>{mode}</option>
+          {/each}
+        </optgroup>
+        <optgroup label="Harmonic Minor">
+          {#each HARMONIC_MINOR_MODES as mode}
+            <option value={mode}>{mode}</option>
+          {/each}
+        </optgroup>
+        <optgroup label="Melodic Minor">
+          {#each MELODIC_MINOR_MODES as mode}
+            <option value={mode}>{mode}</option>
+          {/each}
+        </optgroup>
+      </select>
+    </div>
+    {#if selectedKey}
+      <p class="text-sm text-gray-500">
+        Key: {selectedKey.name} — {selectedKey.notes.join(', ')}
+      </p>
+    {/if}
+  </div>
 
   <!-- Target Notes -->
   <div class="mb-6">
-    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Target Notes</h2>
+    <h2 class="text-sm font-semibold text-gray-500 tracking-wide mb-2">Target Notes: And you are playing a chord with these notes:</h2>
     <div class="flex flex-wrap gap-2 mb-3">
       {#each NOTE_NAMES as note}
         <button
@@ -129,65 +208,6 @@
     </div>
   </div>
 
-  <!-- Key Selector -->
-  <div class="mb-6">
-    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Key</h2>
-    <div class="flex flex-wrap gap-2 mb-3">
-      {#each NOTE_NAMES as note}
-        <button
-          class="px-3 py-2 rounded font-mono text-sm border transition-colors {selectedRoot === note
-            ? 'bg-green-600 text-white border-green-600'
-            : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
-          onclick={() => selectRoot(note)}
-        >
-          {note}
-        </button>
-      {/each}
-      <button
-        class="px-3 py-2 rounded text-sm border border-gray-300 text-gray-500 hover:border-gray-400 transition-colors"
-        onclick={clearKey}
-      >
-        Clear
-      </button>
-    </div>
-    <div class="grid grid-cols-3 gap-x-4 gap-y-1 mb-3">
-      <div class="text-xs font-semibold text-gray-400 uppercase">Major</div>
-      <div class="text-xs font-semibold text-gray-400 uppercase">Harmonic Minor</div>
-      <div class="text-xs font-semibold text-gray-400 uppercase">Melodic Minor</div>
-      {#each { length: 7 } as _, i}
-        <button
-          class="px-2 py-1.5 rounded text-sm text-left border transition-colors {selectedQuality === MAJOR_MODES[i]
-            ? 'bg-green-600 text-white border-green-600'
-            : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
-          onclick={() => selectQuality(MAJOR_MODES[i])}
-        >
-          {MAJOR_MODES[i]}
-        </button>
-        <button
-          class="px-2 py-1.5 rounded text-sm text-left border transition-colors {selectedQuality === HARMONIC_MINOR_MODES[i]
-            ? 'bg-green-600 text-white border-green-600'
-            : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
-          onclick={() => selectQuality(HARMONIC_MINOR_MODES[i])}
-        >
-          {HARMONIC_MINOR_MODES[i]}
-        </button>
-        <button
-          class="px-2 py-1.5 rounded text-sm text-left border transition-colors {selectedQuality === MELODIC_MINOR_MODES[i]
-            ? 'bg-green-600 text-white border-green-600'
-            : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'}"
-          onclick={() => selectQuality(MELODIC_MINOR_MODES[i])}
-        >
-          {MELODIC_MINOR_MODES[i]}
-        </button>
-      {/each}
-    </div>
-    {#if selectedKey}
-      <p class="text-sm text-gray-500">
-        Key: {selectedKey.name} — {selectedKey.notes.join(', ')}
-      </p>
-    {/if}
-  </div>
-
   <!-- Results Count -->
   <p class="text-sm text-gray-500 mb-4">
     Showing {filteredScales.length} of {ALL_SCALES.length} scales
@@ -197,6 +217,8 @@
   <div class="mb-6">
     <ScaleDiagram filteredScaleNames={filteredScales.map(s => s.name)} />
   </div>
+
+  <p class="text-sm text-gray-500 mb-4">You could use the following scales, sorted by how consonant they could sound</p>
 
   <!-- Scale List: grouped by overlap when key active, by type otherwise -->
   {#if selectedKey}
@@ -218,6 +240,9 @@
                     class="px-1.5 py-0.5 rounded text-sm font-mono text-gray-600"
                     class:font-bold={isKeyNote(note)}
                     class:underline={isTargetNote(note)}
+                    class:decoration-black={isTargetNote(note)}
+                    class:decoration-2={isTargetNote(note)}
+                    class:underline-offset-2={isTargetNote(note)}
                   >
                     {note}
                   </span>
@@ -242,6 +267,9 @@
                     <span
                       class="px-1.5 py-0.5 rounded text-sm font-mono text-gray-600"
                       class:underline={isTargetNote(note)}
+                      class:decoration-black={isTargetNote(note)}
+                      class:decoration-2={isTargetNote(note)}
+                      class:underline-offset-2={isTargetNote(note)}
                     >
                       {note}
                     </span>
