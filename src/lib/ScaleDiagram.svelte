@@ -30,11 +30,10 @@
   }
 
   .scale-diagram :global([data-scale]) {
-    transition: opacity 0.2s, filter 0.2s;
+    transition: filter 0.2s;
   }
 
   .scale-diagram :global([data-scale].dimmed) {
-    opacity: 0.15;
     filter: saturate(0);
   }
 </style>
