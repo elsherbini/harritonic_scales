@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { filterScales, countKeyOverlap } from './filter';
+import { filterScales, countKeyOverlap, groupByKeyOverlap } from './filter';
 import { ALL_SCALES } from './scales';
+import { Pcset, Scale } from 'tonal';
 
 describe('filterScales', () => {
   it('returns all 45 scales when no notes selected', () => {
@@ -58,5 +59,43 @@ describe('countKeyOverlap', () => {
     // C major: 101011010101
     // Just C E G = 100010010000
     expect(countKeyOverlap('101011010101', '100010010000')).toBe(3);
+  });
+});
+
+describe('groupByKeyOverlap', () => {
+  it('groups scales by overlap count descending', () => {
+    const keyChroma = Pcset.chroma(Scale.get('C major').notes);
+    const groups = groupByKeyOverlap(ALL_SCALES, keyChroma);
+
+    // groups should be an array of { overlap: number, scales: BarryHarrisScale[] }
+    // sorted by overlap descending
+    expect(groups.length).toBeGreaterThan(0);
+    expect(groups[0].overlap).toBeGreaterThanOrEqual(groups[groups.length - 1].overlap);
+
+    // every scale should appear exactly once
+    const allScales = groups.flatMap(g => g.scales);
+    expect(allScales).toHaveLength(45);
+  });
+
+  it('does not include empty overlap groups', () => {
+    const keyChroma = Pcset.chroma(Scale.get('C major').notes);
+    const groups = groupByKeyOverlap(ALL_SCALES, keyChroma);
+
+    for (const group of groups) {
+      expect(group.scales.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('preserves stable order within overlap groups', () => {
+    const keyChroma = Pcset.chroma(Scale.get('C major').notes);
+    const groups = groupByKeyOverlap(ALL_SCALES, keyChroma);
+
+    // Within each group, scales should appear in same relative order as ALL_SCALES
+    for (const group of groups) {
+      const indices = group.scales.map(s => ALL_SCALES.indexOf(s));
+      for (let i = 1; i < indices.length; i++) {
+        expect(indices[i]).toBeGreaterThan(indices[i - 1]);
+      }
+    }
   });
 });
