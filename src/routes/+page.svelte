@@ -36,8 +36,8 @@
   }
 
   // --- Key state ---
-  let selectedRoot = $state<string | null>('C');
-  let selectedQuality = $state<string | null>('major');
+  let selectedRoot = $state<string | null>(null);
+  let selectedQuality = $state<string | null>(null);
 
   let selectedKey = $derived.by(() => {
     if (!selectedRoot || !selectedQuality) return null;
