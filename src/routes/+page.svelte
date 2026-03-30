@@ -4,6 +4,8 @@
   import { filterScales, groupByKeyOverlap, countKeyOverlap } from '$lib/filter';
   import type { OverlapGroup } from '$lib/filter';
   import ScaleDiagram from '$lib/ScaleDiagram.svelte';
+  import Piano from '$lib/Piano.svelte';
+  import { playSequence, getTonicChord } from '$lib/playback';
 
   const NOTE_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
@@ -168,6 +170,30 @@
     }
     return false;
   }
+
+  let piano: Piano;
+
+  async function handlePlay(scale: { name: string; chroma: string; root: string }) {
+    if (!selectedKey || !targetRoot) return;
+    await piano.ensureReady();
+    const sampler = piano.getSampler();
+    if (!sampler) return;
+
+    const scaleNotes = Pcset.notes(scale.chroma);
+    const tonicChordNotes = getTonicChord(selectedKey.notes[0], selectedQuality!);
+
+    playSequence({
+      sampler,
+      tonicRoot: selectedKey.notes[0],
+      tonicChordNotes,
+      targetRoot,
+      targetChordNotes: [...selectedNotes],
+      scaleNotes,
+      onNotesChange: (notes) => piano.setNotesPlaying(notes),
+      onSustainOn: () => piano.sustainOn(),
+      onSustainOff: () => piano.sustainOff(),
+    });
+  }
 </script>
 
 <main class="max-w-3xl mx-auto px-4 py-8">
@@ -305,6 +331,11 @@
     <ScaleDiagram {scaleSaturations} />
   </div>
 
+  <!-- Piano -->
+  <div class="mb-6">
+    <Piano bind:this={piano} />
+  </div>
+
   <p class="text-sm text-surface-500 mb-4">You could use the following scales, sorted by how consonant they are</p>
 
   <!-- Scale List: grouped by overlap when key active, by type otherwise -->
@@ -320,6 +351,12 @@
               <div class="flex items-baseline gap-2 mb-1">
                 <span class="font-medium">{scale.name}</span>
                 <span class="text-xs text-surface-400">{group.overlap}/{selectedKey.notes.length}</span>
+                <button
+                  class="btn-icon btn-icon-sm preset-tonal-primary ml-auto"
+                  disabled={!selectedKey || !targetRoot}
+                  onclick={() => handlePlay(scale)}
+                  title="Play sequence"
+                >&#9654;</button>
               </div>
               <div class="flex gap-1.5 flex-wrap">
                 {#each Pcset.notes(scale.chroma) as note}
@@ -347,7 +384,15 @@
           <div class="space-y-2">
             {#each scales as scale}
               <div class="card preset-outlined-surface-200-800 p-3">
-                <div class="font-medium mb-1">{scale.name}</div>
+                <div class="flex items-baseline gap-2 mb-1">
+                  <span class="font-medium">{scale.name}</span>
+                  <button
+                    class="btn-icon btn-icon-sm preset-tonal-primary ml-auto"
+                    disabled={!selectedKey || !targetRoot}
+                    onclick={() => handlePlay(scale)}
+                    title="Play sequence"
+                  >&#9654;</button>
+                </div>
                 <div class="flex gap-1.5 flex-wrap">
                   {#each Pcset.notes(scale.chroma) as note}
                     <span
