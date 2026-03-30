@@ -11,7 +11,18 @@
     for (const el of shapes) {
       const name = el.getAttribute('data-scale')!;
       const saturation = scaleSaturations.get(name) ?? 0;
-      (el as HTMLElement).style.filter = `saturate(${saturation})`;
+      const htmlEl = el as HTMLElement;
+      if (saturation === 0) {
+        htmlEl.style.filter = '';
+        for (const child of el.querySelectorAll('[fill]:not([fill="none"])')) {
+          (child as HTMLElement).style.fill = '#CCCCCC';
+        }
+      } else {
+        htmlEl.style.filter = `saturate(${saturation})`;
+        for (const child of el.querySelectorAll('[fill]:not([fill="none"])')) {
+          (child as HTMLElement).style.fill = '';
+        }
+      }
     }
   });
 </script>
@@ -30,7 +41,7 @@
   }
 
   .scale-diagram :global([data-scale]) {
-    transition: filter 0.2s;
+    transition: filter 0.2s, fill 0.2s;
   }
 
   .scale-diagram :global(path[stroke="#000000"]) {

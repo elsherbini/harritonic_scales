@@ -94,6 +94,14 @@
     selectedQuality = null;
   }
 
+  // --- Play hint ---
+  let playHint = $derived.by(() => {
+    if (!selectedKey && !targetRoot) return 'Select a key and root note to play';
+    if (!selectedKey) return 'Select a key to play';
+    if (!targetRoot) return 'Select a root note to play';
+    return null;
+  });
+
   // --- Grouping ---
   let groupedByType = $derived({
     maj6: filteredScales.filter(s => s.type === 'maj6'),
@@ -294,30 +302,50 @@
     <h2 class="text-sm font-semibold text-surface-500 tracking-wide mb-2">Target Notes: And you are playing a chord with these notes...</h2>
     <div class="flex flex-wrap gap-2 mb-3">
       {#each NOTE_NAMES as note}
-        <button
-          class="chip font-mono {selectedNotes.has(note)
-            ? ''
-            : 'preset-outlined-surface-500'}"
-          style="{selectedNotes.has(note)
-            ? `background-color: ${DIM7_COLORS[note]}; color: var(--color-surface-950);`
-            : ''}{targetRoot === note
-            ? ' border: 3px solid light-dark(var(--color-surface-950), var(--color-surface-50));'
-            : ''}"
-          onclick={() => toggleNote(note)}
-          ondblclick={() => handleTargetDblClick(note)}
-          onpointerdown={() => handleTargetPointerDown(note)}
-          onpointerup={handleTargetPointerUp}
-          onpointercancel={handleTargetPointerUp}
-        >
-          {note}
-        </button>
+        <div class="flex flex-col items-center gap-1">
+          <button
+            class="chip font-mono {selectedNotes.has(note)
+              ? ''
+              : 'preset-outlined-surface-500'}"
+            style="{selectedNotes.has(note)
+              ? `background-color: ${DIM7_COLORS[note]}; color: var(--color-surface-950);`
+              : ''}{targetRoot === note
+              ? ' border: 3px solid light-dark(var(--color-surface-950), var(--color-surface-50));'
+              : ''}"
+            onclick={() => toggleNote(note)}
+            ondblclick={() => handleTargetDblClick(note)}
+            onpointerdown={() => handleTargetPointerDown(note)}
+            onpointerup={handleTargetPointerUp}
+            onpointercancel={handleTargetPointerUp}
+          >
+            {note}
+          </button>
+          <button
+            class="flex items-center justify-center"
+            style="height: 1rem;"
+            disabled={!selectedNotes.has(note)}
+            onclick={() => { targetRoot = targetRoot === note ? null : note; }}
+          >
+            <span
+              class="inline-block rounded-full border-2"
+              style="width: 0.75rem; height: 0.75rem; {selectedNotes.has(note)
+                ? `border-color: ${DIM7_COLORS[note]};`
+                : 'border-color: var(--color-surface-400); opacity: 0.3;'}{targetRoot === note
+                ? ` background-color: ${DIM7_COLORS[note]};`
+                : ''}"
+            ></span>
+          </button>
+        </div>
       {/each}
-      <button
-        class="btn btn-sm preset-tonal-surface"
-        onclick={clearSelection}
-      >
-        Clear
-      </button>
+      <div class="flex flex-col items-center gap-1">
+        <button
+          class="btn btn-sm preset-tonal-surface"
+          onclick={clearSelection}
+        >
+          Clear
+        </button>
+        <span class="text-xs text-surface-400">Root</span>
+      </div>
     </div>
   </div>
 
@@ -351,8 +379,11 @@
               <div class="flex items-baseline gap-2 mb-1">
                 <span class="font-medium">{scale.name}</span>
                 <span class="text-xs text-surface-400">{group.overlap}/{selectedKey.notes.length}</span>
+                {#if playHint}
+                  <span class="text-xs text-surface-400 ml-auto">{playHint}</span>
+                {/if}
                 <button
-                  class="btn-icon btn-icon-sm preset-tonal-primary ml-auto"
+                  class="btn-icon btn-icon-sm preset-tonal-primary {playHint ? '' : 'ml-auto'}"
                   disabled={!selectedKey || !targetRoot}
                   onclick={() => handlePlay(scale)}
                   title="Play sequence"
@@ -386,8 +417,11 @@
               <div class="card preset-outlined-surface-200-800 p-3">
                 <div class="flex items-baseline gap-2 mb-1">
                   <span class="font-medium">{scale.name}</span>
+                  {#if playHint}
+                    <span class="text-xs text-surface-400 ml-auto">{playHint}</span>
+                  {/if}
                   <button
-                    class="btn-icon btn-icon-sm preset-tonal-primary ml-auto"
+                    class="btn-icon btn-icon-sm preset-tonal-primary {playHint ? '' : 'ml-auto'}"
                     disabled={!selectedKey || !targetRoot}
                     onclick={() => handlePlay(scale)}
                     title="Play sequence"
