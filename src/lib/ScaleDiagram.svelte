@@ -32,4 +32,8 @@
   .scale-diagram :global([data-scale]) {
     transition: filter 0.2s;
   }
+
+  .scale-diagram :global(path[stroke="#000000"]) {
+    stroke: light-dark(var(--color-surface-950), var(--color-surface-50));
+  }
 </style>
