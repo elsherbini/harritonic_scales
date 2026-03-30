@@ -25,6 +25,7 @@
     const next = new Set(selectedNotes);
     if (next.has(note)) {
       next.delete(note);
+      if (targetRoot === note) targetRoot = null;
     } else {
       next.add(note);
     }
@@ -33,6 +34,34 @@
 
   function clearSelection() {
     selectedNotes = new Set();
+    targetRoot = null;
+  }
+
+  // --- Target root note ---
+  let targetRoot = $state<string | null>(null);
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function handleTargetDblClick(note: string) {
+    if (!selectedNotes.has(note)) {
+      const next = new Set(selectedNotes);
+      next.add(note);
+      selectedNotes = next;
+    }
+    targetRoot = targetRoot === note ? null : note;
+  }
+
+  function handleTargetPointerDown(note: string) {
+    longPressTimer = setTimeout(() => {
+      handleTargetDblClick(note);
+      longPressTimer = null;
+    }, 300);
+  }
+
+  function handleTargetPointerUp() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
   }
 
   // --- Key state ---
@@ -243,10 +272,16 @@
           class="chip font-mono {selectedNotes.has(note)
             ? ''
             : 'preset-outlined-surface-500'}"
-          style={selectedNotes.has(note)
+          style="{selectedNotes.has(note)
             ? `background-color: ${DIM7_COLORS[note]}; color: var(--color-surface-950);`
-            : ''}
+            : ''}{targetRoot === note
+            ? ' border: 3px solid light-dark(var(--color-surface-950), var(--color-surface-50));'
+            : ''}"
           onclick={() => toggleNote(note)}
+          ondblclick={() => handleTargetDblClick(note)}
+          onpointerdown={() => handleTargetPointerDown(note)}
+          onpointerup={handleTargetPointerUp}
+          onpointercancel={handleTargetPointerUp}
         >
           {note}
         </button>
