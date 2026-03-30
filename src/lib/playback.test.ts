@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getClosedVoicing, stepChordInScale, getTonicChord } from './playback';
+import { getClosedVoicing, stepChordInScale, stepVoicedChord, dropTwo, getTonicChord } from './playback';
 
 describe('getClosedVoicing', () => {
   it('voices notes upward from root within one octave', () => {
@@ -40,6 +40,41 @@ describe('stepChordInScale', () => {
   it('wraps around scale boundary going up', () => {
     const result = stepChordInScale(['B'], scaleNotes, 1);
     expect(result).toEqual(['C']);
+  });
+});
+
+describe('stepVoicedChord', () => {
+  // F min6 Diminished: C, Db, D, E, F, G, Ab, Bb
+  const scaleNotes = ['C', 'Db', 'D', 'E', 'F', 'G', 'Ab', 'Bb'];
+
+  it('steps voiced chord down preserving voice leading', () => {
+    const result = stepVoicedChord(['Db4', 'E4', 'Ab4', 'Bb4'], scaleNotes, -1);
+    expect(result).toEqual(['C4', 'D4', 'G4', 'Ab4']);
+  });
+
+  it('steps voiced chord up preserving voice leading', () => {
+    const result = stepVoicedChord(['Db4', 'E4', 'Ab4', 'Bb4'], scaleNotes, 1);
+    expect(result).toEqual(['D4', 'F4', 'Bb4', 'C5']);
+  });
+
+  it('wraps octave down when stepping below C', () => {
+    const result = stepVoicedChord(['C4'], scaleNotes, -1);
+    expect(result).toEqual(['Bb3']);
+  });
+
+  it('wraps octave up when stepping above B', () => {
+    const result = stepVoicedChord(['Bb4'], scaleNotes, 1);
+    expect(result).toEqual(['C5']);
+  });
+});
+
+describe('dropTwo', () => {
+  it('drops 2nd highest note down an octave', () => {
+    expect(dropTwo(['Db3', 'E3', 'Ab3', 'Bb3'])).toEqual(['Ab2', 'Db3', 'E3', 'Bb3']);
+  });
+
+  it('returns unchanged for fewer than 4 notes', () => {
+    expect(dropTwo(['C4', 'E4', 'G4'])).toEqual(['C4', 'E4', 'G4']);
   });
 });
 

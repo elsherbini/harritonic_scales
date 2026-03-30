@@ -3,8 +3,16 @@
   import { generateKeys, type PianoKey } from './keymap';
   import { base } from '$app/paths';
 
+  import { Note } from 'tonal';
+
+  function toSharpName(note: string): string {
+    const midi = Note.midi(note);
+    if (midi === null) return note;
+    return Note.fromMidiSharps(midi);
+  }
+
   const RHODES_URLS: Record<string, string> = {
-    A1: "RhodesMK1_A1_60.mp3", A2: "RhodesMK1_A2_60.mp3", A3: "RhodesMK1_A3_70.mp3",
+    A1: "RhodesMK1_A1_60.mp3", A2: "RhodesMK1_A2_70.mp3", A3: "RhodesMK1_A3_70.mp3",
     A4: "RhodesMK1_A4_60.mp3", A5: "RhodesMK1_A5_60.mp3", A6: "RhodesMK1_A6_70.mp3",
     "A#1": "RhodesMK1_As1_60.mp3", "A#2": "RhodesMK1_As2_70.mp3", "A#3": "RhodesMK1_As3_70.mp3",
     "A#4": "RhodesMK1_As4_60.mp3", "A#5": "RhodesMK1_As5_60.mp3", "A#6": "RhodesMK1_As6_70.mp3",
@@ -72,6 +80,7 @@
           resolve();
         },
         onerror: (err) => {
+          isLoadingSamples = false;
           console.error(err);
           reject(err);
         },
@@ -130,7 +139,7 @@
   }
 
   export function setNotesPlaying(notes: string[]) {
-    notesPlaying = notes;
+    notesPlaying = notes.map(toSharpName);
   }
 </script>
 
@@ -222,9 +231,26 @@
     pointer-events: auto;
   }
 
-  piano .white-key.playing {
+  /* Red: E(7n+1), G(7n+3) */
+  piano .white-key.playing:nth-child(7n+1),
+  piano .white-key.playing:nth-child(7n+3) {
     background-color: rgb(240, 41, 93);
     box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
+    transform: translateY(2px);
+  }
+  /* Blue: F(7n+2), B(7n+5), D(7n+7) */
+  piano .white-key.playing:nth-child(7n+2),
+  piano .white-key.playing:nth-child(7n+5),
+  piano .white-key.playing:nth-child(7n+7) {
+    background-color: rgb(86, 180, 233);
+    box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
+    transform: translateY(2px);
+  }
+  /* Yellow: A(7n+4), C(7n+6) */
+  piano .white-key.playing:nth-child(7n+4),
+  piano .white-key.playing:nth-child(7n+6) {
+    background-color: rgb(239, 227, 65);
+    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
     transform: translateY(2px);
   }
 
@@ -232,12 +258,37 @@
     background-color: rgb(144, 84, 77);
   }
 
-  piano .white-key:hover {
-    background-color: light-dark(#ddd, rgba(140, 140, 140, 0.5));
+  piano .white-key:hover:nth-child(7n+1),
+  piano .white-key:hover:nth-child(7n+3) {
+    background-color: rgb(247, 148, 171);
+  }
+  piano .white-key:hover:nth-child(7n+2),
+  piano .white-key:hover:nth-child(7n+5),
+  piano .white-key:hover:nth-child(7n+7) {
+    background-color: rgb(170, 217, 244);
+  }
+  piano .white-key:hover:nth-child(7n+4),
+  piano .white-key:hover:nth-child(7n+6) {
+    background-color: rgb(247, 241, 160);
   }
 
-  piano .white-key:active {
+  piano .white-key:active:nth-child(7n+1),
+  piano .white-key:active:nth-child(7n+3) {
     background-color: rgb(240, 41, 93);
+    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
+    transform: translateY(2px);
+  }
+  piano .white-key:active:nth-child(7n+2),
+  piano .white-key:active:nth-child(7n+5),
+  piano .white-key:active:nth-child(7n+7) {
+    background-color: rgb(86, 180, 233);
+    box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
+    transform: translateY(2px);
+  }
+  piano .white-key:active:nth-child(7n+4),
+  piano .white-key:active:nth-child(7n+6) {
+    background-color: rgb(239, 227, 65);
+    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
     transform: translateY(2px);
   }
 
@@ -250,9 +301,25 @@
     background: rgb(20, 20, 20);
     border-radius: 3px;
     box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.47);
+    pointer-events: auto;
   }
 
-  piano .black-key.playing {
+  /* Yellow: F#(5n+1), D#(5n+5) */
+  piano .black-key.playing:nth-child(5n+1),
+  piano .black-key.playing:nth-child(5n+5) {
+    background-color: rgb(239, 227, 65);
+    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
+    transform: translateY(2px);
+  }
+  /* Blue: G#(5n+2) */
+  piano .black-key.playing:nth-child(5n+2) {
+    background-color: rgb(86, 180, 233);
+    box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
+    transform: translateY(2px);
+  }
+  /* Red: A#(5n+3), C#(5n+4) */
+  piano .black-key.playing:nth-child(5n+3),
+  piano .black-key.playing:nth-child(5n+4) {
     background-color: rgb(240, 41, 93);
     box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
     transform: translateY(2px);
@@ -262,12 +329,33 @@
     background-color: rgb(144, 84, 77);
   }
 
-  piano .black-key:hover {
-    background-color: rgb(60, 60, 60);
+  piano .black-key:hover:nth-child(5n+1),
+  piano .black-key:hover:nth-child(5n+5) {
+    background-color: rgb(120, 113, 33);
+  }
+  piano .black-key:hover:nth-child(5n+2) {
+    background-color: rgb(43, 90, 117);
+  }
+  piano .black-key:hover:nth-child(5n+3),
+  piano .black-key:hover:nth-child(5n+4) {
+    background-color: rgb(120, 20, 47);
   }
 
-  piano .black-key:active {
+  piano .black-key:active:nth-child(5n+1),
+  piano .black-key:active:nth-child(5n+5) {
+    background-color: rgb(239, 227, 65);
+    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
+    transform: translateY(2px);
+  }
+  piano .black-key:active:nth-child(5n+2) {
+    background-color: rgb(86, 180, 233);
+    box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
+    transform: translateY(2px);
+  }
+  piano .black-key:active:nth-child(5n+3),
+  piano .black-key:active:nth-child(5n+4) {
     background-color: rgb(240, 41, 93);
+    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
     transform: translateY(2px);
   }
 </style>
