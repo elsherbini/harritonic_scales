@@ -1,7 +1,10 @@
 <script lang="ts">
   import svgRaw from '$lib/assets/scales-tagged.svg?raw';
 
-  let { scaleSaturations }: { scaleSaturations: Map<string, number> } = $props();
+  let { scaleSaturations, onScaleClick }: {
+    scaleSaturations: Map<string, number>;
+    onScaleClick?: (scaleName: string) => void;
+  } = $props();
 
   let container: HTMLDivElement;
 
@@ -14,20 +17,34 @@
       const htmlEl = el as HTMLElement;
       if (saturation === 0) {
         htmlEl.style.filter = '';
+        htmlEl.style.cursor = '';
         for (const child of el.querySelectorAll('[fill]:not([fill="none"])')) {
           (child as HTMLElement).style.fill = '#CCCCCC';
         }
       } else {
         htmlEl.style.filter = `saturate(${saturation})`;
+        htmlEl.style.cursor = onScaleClick ? 'pointer' : '';
         for (const child of el.querySelectorAll('[fill]:not([fill="none"])')) {
           (child as HTMLElement).style.fill = '';
         }
       }
     }
   });
+
+  function handleClick(e: MouseEvent) {
+    if (!onScaleClick) return;
+    const target = (e.target as Element).closest('[data-scale]');
+    if (!target) return;
+    const name = target.getAttribute('data-scale')!;
+    const saturation = scaleSaturations.get(name) ?? 0;
+    if (saturation > 0) {
+      onScaleClick(name);
+    }
+  }
 </script>
 
-<div class="scale-diagram" bind:this={container}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="scale-diagram" bind:this={container} onclick={handleClick}>
   {@html svgRaw}
 </div>
 

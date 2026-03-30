@@ -181,6 +181,11 @@
 
   let piano: Piano;
 
+  function handleScaleDiagramClick(scaleName: string) {
+    const scale = ALL_SCALES.find(s => s.name === scaleName);
+    if (scale) handlePlay(scale);
+  }
+
   async function handlePlay(scale: { name: string; chroma: string; root: string }) {
     if (!selectedKey || !targetRoot) return;
     await piano.ensureReady();
@@ -356,7 +361,7 @@
 
   <!-- Scale Diagram -->
   <div class="mb-6">
-    <ScaleDiagram {scaleSaturations} />
+    <ScaleDiagram {scaleSaturations} onScaleClick={handleScaleDiagramClick} />
   </div>
 
   <!-- Piano -->
