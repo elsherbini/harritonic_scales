@@ -109,11 +109,11 @@ export function noteToAbcInKey(note: string, keySigNotes: Set<string>): string {
 /**
  * Generate ABC notation for a scale displayed as an ascending run.
  */
-export function scaleToAbc(notes: string[], root: string, mode: string): string {
-  const { keyLine, keySigNotes } = getAbcKey(root, mode);
+export function scaleToAbc(notes: string[], root: string, mode: string | null): string {
+  const { keyLine, keySigNotes } = mode ? getAbcKey(root, mode) : { keyLine: 'K:C clef=treble', keySigNotes: new Set<string>() };
   const abcNotes = notes.map(n => noteToAbcInKey(n, keySigNotes)).join('');
 
-  return `X:1\nL:1/4\n${keyLine} clef=treble\n${abcNotes}`;
+  return `X:1\nL:1/4\n${keyLine}${keyLine.includes('clef=') ? '' : ' clef=treble'}\n${abcNotes}`;
 }
 
 /**

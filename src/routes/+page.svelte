@@ -8,7 +8,7 @@
   import Piano from '$lib/Piano.svelte';
   import { playSequence, getTonicChord, getSequenceChords } from '$lib/playback';
   import StaffNotation from '$lib/StaffNotation.svelte';
-  import { sequenceToAbc } from '$lib/abc';
+  import { scaleToAbc, sequenceToAbc } from '$lib/abc';
 
   const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
   const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -243,17 +243,43 @@
   let staffClef = $state<'treble' | 'diminished'>('treble');
   let staffHighlightIndex = $state<number | null>(null);
   let activeSequenceChords = $state<string[][] | null>(null);
+  let activeScaleNotes = $state<string[] | null>(null);
+  let activeScaleRoot = $state<string | null>(null);
 
   let staffAbc = $derived.by(() => {
     if (activeSequenceChords && selectedKey) {
       return sequenceToAbc(activeSequenceChords, selectedKey.notes[0], selectedQuality!);
+    }
+    if (activeScaleNotes && activeScaleRoot) {
+      return scaleToAbc(activeScaleNotes, activeScaleRoot, null);
     }
     return 'X:1\nL:1/4\nK:C clef=treble\n';
   });
 
   function handleScaleDiagramClick(scaleName: string) {
     const scale = ALL_SCALES.find(s => s.name === scaleName);
-    if (scale) handlePlay(scale);
+    if (!scale) return;
+
+    // Show scale notes on staff as ascending run
+    const scaleNotes = Pcset.notes(scale.chroma);
+    const rootChroma = Note.chroma(scale.root)!;
+    const ascending: string[] = [];
+    let oct = 4;
+    let prevChroma = -1;
+    for (const pc of scaleNotes) {
+      const chroma = Note.chroma(pc)!;
+      if (prevChroma >= 0 && chroma <= prevChroma) oct++;
+      ascending.push(pc + oct);
+      prevChroma = chroma;
+    }
+
+    activeScaleNotes = ascending;
+    activeScaleRoot = scale.root;
+    activeSequenceChords = null;
+    staffHighlightIndex = null;
+
+    // If key+target selected, also play
+    if (selectedKey && targetRoot) handlePlay(scale);
   }
 
   async function handlePlay(scale: { name: string; chroma: string; root: string }) {
