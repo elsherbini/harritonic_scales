@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { noteToAbc } from './abc';
+import { noteToAbc, scaleToAbc, sequenceToAbc } from './abc';
 
 describe('noteToAbc', () => {
   it('converts natural notes in octave 4 to uppercase', () => {
@@ -40,5 +40,56 @@ describe('noteToAbc', () => {
     expect(noteToAbc('Bb4')).toBe('_B');
     expect(noteToAbc('Db3')).toBe('_D,');
     expect(noteToAbc('Eb5')).toBe('_e');
+  });
+});
+
+describe('scaleToAbc', () => {
+  it('generates ABC for C major ascending scale', () => {
+    const notes = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+    const abc = scaleToAbc(notes, 'C', 'major');
+    expect(abc).toContain('K:C');
+    expect(abc).toContain('CDEFGABc');
+  });
+
+  it('generates ABC for D dorian with correct key sig', () => {
+    const notes = ['D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5'];
+    const abc = scaleToAbc(notes, 'D', 'dorian');
+    expect(abc).toContain('K:DDor');
+    expect(abc).toContain('DEFGABcd');
+  });
+
+  it('generates ABC for A harmonic minor with raised 7th accidental', () => {
+    const notes = ['A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G#4', 'A4'];
+    const abc = scaleToAbc(notes, 'A', 'harmonic minor');
+    expect(abc).toContain('K:Am');
+    expect(abc).toContain('^G');
+  });
+
+  it('includes L:1/4 for quarter note default length', () => {
+    const notes = ['C4', 'D4', 'E4'];
+    const abc = scaleToAbc(notes, 'C', 'major');
+    expect(abc).toContain('L:1/4');
+  });
+});
+
+describe('sequenceToAbc', () => {
+  it('generates stacked chords in brackets', () => {
+    const chords = [['C4', 'E4', 'G4'], ['D4', 'F4', 'A4']];
+    const abc = sequenceToAbc(chords, 'C', 'major');
+    expect(abc).toContain('[CEG]');
+    expect(abc).toContain('[DFA]');
+  });
+
+  it('includes key signature', () => {
+    const chords = [['C4', 'E4', 'G4']];
+    const abc = sequenceToAbc(chords, 'C', 'major');
+    expect(abc).toContain('K:C');
+  });
+
+  it('handles accidentals in chords', () => {
+    const chords = [['Db3', 'E3', 'Ab3', 'Bb3']];
+    const abc = sequenceToAbc(chords, 'Bb', 'major');
+    expect(abc).toContain('[');
+    expect(abc).toContain(']');
   });
 });
