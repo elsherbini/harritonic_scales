@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getClosedVoicing, stepChordInScale, stepVoicedChord, dropTwo, getTonicChord } from './playback';
+import { getClosedVoicing, stepChordInScale, stepVoicedChord, dropTwo, getTonicChord, getSequenceChords } from './playback';
 
 describe('getClosedVoicing', () => {
   it('voices notes upward from root within one octave', () => {
@@ -89,5 +89,29 @@ describe('getTonicChord', () => {
 
   it('returns minor triad for qualities containing "minor"', () => {
     expect(getTonicChord('D', 'harmonic minor')).toEqual(['D', 'F', 'A']);
+  });
+});
+
+describe('getSequenceChords', () => {
+  it('returns 12 chord arrays', () => {
+    const chords = getSequenceChords({
+      tonicRoot: 'C',
+      tonicChordNotes: ['C', 'E', 'G'],
+      targetRoot: 'Db',
+      targetChordNotes: ['Db', 'E', 'G', 'Bb'],
+      scaleNotes: ['C', 'Db', 'D', 'E', 'F', 'G', 'Ab', 'Bb'],
+    });
+    expect(chords).toHaveLength(12);
+  });
+
+  it('starts and ends with tonic voicing', () => {
+    const chords = getSequenceChords({
+      tonicRoot: 'C',
+      tonicChordNotes: ['C', 'E', 'G'],
+      targetRoot: 'Db',
+      targetChordNotes: ['Db', 'E', 'G', 'Bb'],
+      scaleNotes: ['C', 'Db', 'D', 'E', 'F', 'G', 'Ab', 'Bb'],
+    });
+    expect(chords[0]).toEqual(chords[11]);
   });
 });

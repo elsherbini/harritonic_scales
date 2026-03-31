@@ -113,6 +113,7 @@ export type SequenceParams = {
   onNotesChange?: (notes: string[]) => void;
   onSustainOn?: () => void;
   onSustainOff?: () => void;
+  onChordIndex?: (index: number) => void;
 };
 
 /**
@@ -133,6 +134,7 @@ export function playSequence(params: SequenceParams): void {
     onNotesChange,
     onSustainOn,
     onSustainOff,
+    onChordIndex,
   } = params;
 
   const transport = Tone.getTransport();
@@ -147,15 +149,15 @@ export function playSequence(params: SequenceParams): void {
   const targetVoicingLow = dropTwo(getClosedVoicing(targetRoot, targetChordNotes, lowOctave));
   const targetBass = targetRoot + (lowOctave - 1);
 
-  // Walk up the scale: 8 chords, each stepped +1 from the previous
-  const walkChords: string[][] = [];
+  // Walk up the scale: start on target, step up 7 times (8 chords total)
+  const walkChords: string[][] = [targetVoicingLow];
   let current = targetVoicingLow;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 7; i++) {
     current = stepVoicedChord(current, scaleNotes, 1);
     walkChords.push(current);
   }
-  // After 8 steps in an 8-note scale, current = target one octave above
-  const targetVoicingHigh = current;
+  // One more step gives target one octave above
+  const targetVoicingHigh = stepVoicedChord(current, scaleNotes, 1);
 
   type ChordEvent = { time: string; notes: string[]; bass: string; duration: string };
   const chords: ChordEvent[] = [
@@ -184,7 +186,8 @@ export function playSequence(params: SequenceParams): void {
     { time: '2:2', notes: tonicVoicing, bass: tonicBass, duration: '0:2' },
   );
 
-  for (const chord of chords) {
+  for (let chordIdx = 0; chordIdx < chords.length; chordIdx++) {
+    const chord = chords[chordIdx];
     const allNotes = [...chord.notes, chord.bass];
 
     transport.schedule((time) => {
@@ -192,6 +195,7 @@ export function playSequence(params: SequenceParams): void {
       sampler.triggerAttack(allNotes, time);
       onSustainOn?.();
       onNotesChange?.(allNotes);
+      onChordIndex?.(chordIdx);
     }, chord.time);
 
     transport.schedule((time) => {
@@ -205,7 +209,48 @@ export function playSequence(params: SequenceParams): void {
   transport.schedule(() => {
     transport.stop();
     onNotesChange?.([]);
+    onChordIndex?.(-1);
   }, '3:0');
 
   transport.start();
+}
+
+export type SequenceChordsParams = {
+  tonicRoot: string;
+  tonicChordNotes: string[];
+  targetRoot: string;
+  targetChordNotes: string[];
+  scaleNotes: string[];
+  octave?: number;
+};
+
+export function getSequenceChords(params: SequenceChordsParams): string[][] {
+  const {
+    tonicRoot,
+    tonicChordNotes,
+    targetRoot,
+    targetChordNotes,
+    scaleNotes,
+    octave = 4,
+  } = params;
+
+  const lowOctave = octave - 1;
+  const tonicVoicing = getClosedVoicing(tonicRoot, tonicChordNotes, octave);
+  const targetVoicingLow = dropTwo(getClosedVoicing(targetRoot, targetChordNotes, lowOctave));
+
+  const walkChords: string[][] = [targetVoicingLow];
+  let current = targetVoicingLow;
+  for (let i = 0; i < 7; i++) {
+    current = stepVoicedChord(current, scaleNotes, 1);
+    walkChords.push(current);
+  }
+  const targetVoicingHigh = stepVoicedChord(current, scaleNotes, 1);
+
+  return [
+    tonicVoicing,        // bar 0: tonic
+    targetVoicingLow,    // bar 0: target low
+    ...walkChords,       // bar 1: 8 walk-up chords
+    targetVoicingHigh,   // bar 2: target high
+    tonicVoicing,        // bar 2: tonic
+  ];
 }
