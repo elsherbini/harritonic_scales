@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { noteToAbc, scaleToAbc, sequenceToAbc } from './abc';
+import { noteToAbc, scaleToAbc, sequenceToAbc, makeDimAbc } from './abc';
 
 describe('noteToAbc', () => {
   it('converts natural notes in octave 4 to uppercase', () => {
@@ -91,5 +91,32 @@ describe('sequenceToAbc', () => {
     const abc = sequenceToAbc(chords, 'Bb', 'major');
     expect(abc).toContain('[');
     expect(abc).toContain(']');
+  });
+});
+
+describe('makeDimAbc', () => {
+  it('replaces treble clef with diminished', () => {
+    const abc = 'X:1\nL:1/4\nK:C clef=treble\nCDEF';
+    const result = makeDimAbc(abc);
+    expect(result).toContain('clef=diminished');
+    expect(result).not.toContain('clef=treble');
+  });
+
+  it('replaces K: line clefs', () => {
+    const abc = 'X:1\nK:DDor clef=treble\nDEFG';
+    const result = makeDimAbc(abc);
+    expect(result).toContain('clef=diminished');
+  });
+
+  it('preserves note content', () => {
+    const abc = 'X:1\nL:1/4\nK:C clef=treble\nCDEF';
+    const result = makeDimAbc(abc);
+    expect(result).toContain('CDEF');
+  });
+
+  it('strips octave overrides', () => {
+    const abc = 'X:1\nK:C clef=treble octave=-1\nCDEF';
+    const result = makeDimAbc(abc);
+    expect(result).not.toContain('octave=');
   });
 });

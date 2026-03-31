@@ -129,3 +129,13 @@ export function sequenceToAbc(chords: string[][], root: string, mode: string): s
 
   return `X:1\nL:1/4\n${keyLine} clef=treble\n${abcChords}`;
 }
+
+/**
+ * Transform ABC notation to use diminished clef instead of treble.
+ * Ported from diminished_staff project.
+ */
+export function makeDimAbc(abc: string): string {
+  return abc
+    .replace(/clef=treble/g, 'clef=diminished')
+    .replace(/\s+octave=-?\d+/g, '');
+}
