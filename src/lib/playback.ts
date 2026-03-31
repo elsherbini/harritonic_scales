@@ -146,7 +146,7 @@ export function playSequence(params: SequenceParams): void {
   const lowOctave = octave - 1;
   const tonicVoicing = getClosedVoicing(tonicRoot, tonicChordNotes, octave);
   const tonicBass = tonicRoot + (octave - 1);
-  const targetVoicingLow = dropTwo(getClosedVoicing(targetRoot, targetChordNotes, lowOctave));
+  const targetVoicingLow = getClosedVoicing(targetRoot, targetChordNotes, lowOctave);
   const targetBass = targetRoot + (lowOctave - 1);
 
   // Walk up the scale: start on target, step up 7 times (8 chords total)
@@ -236,7 +236,7 @@ export function getSequenceChords(params: SequenceChordsParams): string[][] {
 
   const lowOctave = octave - 1;
   const tonicVoicing = getClosedVoicing(tonicRoot, tonicChordNotes, octave);
-  const targetVoicingLow = dropTwo(getClosedVoicing(targetRoot, targetChordNotes, lowOctave));
+  const targetVoicingLow = getClosedVoicing(targetRoot, targetChordNotes, lowOctave);
 
   const walkChords: string[][] = [targetVoicingLow];
   let current = targetVoicingLow;

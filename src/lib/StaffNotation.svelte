@@ -31,27 +31,58 @@
 
     ABCJS.renderAbc(containerEl, abcToRender, {
       responsive: 'resize',
+      staffwidth: 700,
+      scale: 1.5,
       add_classes: true,
       ...(clef === 'diminished' ? { diminishedColors } : {}),
     });
   });
 
-  // Highlight the current chord/note group
+  // Cursor line: vertical red line spanning the staff at the active note
   $effect(() => {
     if (!containerEl) return;
 
-    // Remove previous highlights
-    containerEl.querySelectorAll('.abcjs-highlight').forEach(el => {
-      el.classList.remove('abcjs-highlight');
+    const svg = containerEl.querySelector('svg');
+    if (!svg) return;
+
+    // Remove existing cursor line
+    svg.querySelector('.abcjs-cursor-line')?.remove();
+
+    if (highlightIndex === null || highlightIndex === undefined || highlightIndex < 0) return;
+
+    const noteGroups = svg.querySelectorAll('.abcjs-note');
+    const noteEl = noteGroups[highlightIndex];
+    if (!noteEl) return;
+
+    // Get the note's position within the SVG coordinate space
+    const noteBBox = (noteEl as SVGGraphicsElement).getBBox();
+
+    // Find the staff lines to get vertical extent
+    const staffLines = svg.querySelectorAll('.abcjs-staff path[d]');
+    let staffTop = Infinity;
+    let staffBottom = -Infinity;
+    staffLines.forEach(line => {
+      const bbox = (line as SVGGraphicsElement).getBBox();
+      staffTop = Math.min(staffTop, bbox.y);
+      staffBottom = Math.max(staffBottom, bbox.y + bbox.height);
     });
 
-    if (highlightIndex === null || highlightIndex === undefined) return;
+    // Extend a bit beyond the staff (one staff-space above and below)
+    const staffHeight = staffBottom - staffTop;
+    const margin = staffHeight * 0.3;
+    const lineTop = staffTop - margin;
+    const lineBottom = staffBottom + margin;
 
-    // abcjs with add_classes adds .abcjs-note elements
-    const noteGroups = containerEl.querySelectorAll('.abcjs-note');
-    if (noteGroups[highlightIndex]) {
-      noteGroups[highlightIndex].classList.add('abcjs-highlight');
-    }
+    // Position line at the center-x of the note
+    const x = noteBBox.x + noteBBox.width / 2;
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.classList.add('abcjs-cursor-line');
+    line.setAttribute('x1', String(x));
+    line.setAttribute('x2', String(x));
+    line.setAttribute('y1', String(lineTop));
+    line.setAttribute('y2', String(lineBottom));
+    svg.appendChild(line);
   });
 </script>
 
@@ -60,12 +91,14 @@
 <style>
   .staff-notation :global(svg) {
     width: 100%;
-    max-width: 600px;
+    max-width: 100%;
     margin: 0 auto;
     display: block;
   }
 
-  .staff-notation :global(.abcjs-highlight) {
-    fill: rgb(240, 41, 93) !important;
+  .staff-notation :global(.abcjs-cursor-line) {
+    stroke: rgb(240, 41, 93);
+    stroke-width: 2;
+    stroke-opacity: 0.8;
   }
 </style>

@@ -38,9 +38,17 @@
     "G#4": "RhodesMK1_Gs4_60.mp3", "G#5": "RhodesMK1_Gs5_60.mp3", "G#6": "RhodesMK1_Gs6_70.mp3",
   };
 
-  const keys = generateKeys('E1', 'E7');
+  const keys = generateKeys('C2', 'E6');
   const whiteKeys = keys.filter(k => !k.isBlack);
   const blackKeys = keys.filter(k => k.isBlack);
+
+  // Compute black key positions as percentage of total width
+  // Each black key sits to the right of the preceding white key
+  const blackKeyPositions = blackKeys.map(bk => {
+    const whiteIdx = whiteKeys.filter(wk => wk.midi < bk.midi).length;
+    const pct = (whiteIdx / whiteKeys.length) * 100;
+    return { ...bk, pct };
+  });
 
   let sampler: Tone.Sampler | null = null;
   let reverb: Tone.Reverb | null = null;
@@ -143,7 +151,7 @@
   }
 </script>
 
-<div class="piano-container overflow-x-auto" onmouseup={onStopDrag}>
+<div class="piano-container" onmouseup={onStopDrag}>
   {#if isLoadingSamples}
     <p class="text-sm text-surface-500 text-center">Loading samples...</p>
   {/if}
@@ -165,12 +173,12 @@
       {/each}
     </div>
     <div class="black-keys">
-      {#each blackKeys as bk}
+      {#each blackKeyPositions as bk}
         <div
           class="black-key"
           class:playing={notesPlaying.includes(bk.key)}
           class:sustained={sustainedNotes.includes(bk.key)}
-          style="left: {bk.x}px;"
+          style="left: {bk.pct}%; transform: translateX(-50%);"
           onmousedown={() => { noteDown(bk.key); isDragging = true; }}
           onmouseup={() => { noteUp(bk.key); onStopDrag(); }}
           onmouseenter={() => { if (isDragging) noteDown(bk.key); }}
@@ -190,13 +198,10 @@
 
   piano {
     min-height: 100px;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: flex-start;
+    display: block;
     margin: 0 auto;
     position: relative;
-    width: fit-content;
+    width: 100%;
     pointer-events: auto;
     box-sizing: border-box;
   }
@@ -209,6 +214,8 @@
   piano .black-keys {
     position: absolute;
     top: -10px;
+    left: 0;
+    right: 0;
     height: 75px;
   }
 
@@ -221,8 +228,9 @@
 
   piano .white-key {
     position: relative;
-    width: 20px;
-    margin: 0 2px;
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0 1px;
     box-sizing: border-box;
     height: 100%;
     border: 1px inset rgb(156, 156, 156);
@@ -231,26 +239,26 @@
     pointer-events: auto;
   }
 
-  /* Red: E(7n+1), G(7n+3) */
+  /* Yellow: C(7n+1), A(7n+6) */
   piano .white-key.playing:nth-child(7n+1),
-  piano .white-key.playing:nth-child(7n+3) {
-    background-color: rgb(240, 41, 93);
-    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
+  piano .white-key.playing:nth-child(7n+6) {
+    background-color: rgb(239, 227, 65);
+    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
     transform: translateY(2px);
   }
-  /* Blue: F(7n+2), B(7n+5), D(7n+7) */
+  /* Blue: D(7n+2), F(7n+4), B(7n+7) */
   piano .white-key.playing:nth-child(7n+2),
-  piano .white-key.playing:nth-child(7n+5),
+  piano .white-key.playing:nth-child(7n+4),
   piano .white-key.playing:nth-child(7n+7) {
     background-color: rgb(86, 180, 233);
     box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
     transform: translateY(2px);
   }
-  /* Yellow: A(7n+4), C(7n+6) */
-  piano .white-key.playing:nth-child(7n+4),
-  piano .white-key.playing:nth-child(7n+6) {
-    background-color: rgb(239, 227, 65);
-    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
+  /* Red: E(7n+3), G(7n+5) */
+  piano .white-key.playing:nth-child(7n+3),
+  piano .white-key.playing:nth-child(7n+5) {
+    background-color: rgb(240, 41, 93);
+    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
     transform: translateY(2px);
   }
 
@@ -259,43 +267,43 @@
   }
 
   piano .white-key:hover:nth-child(7n+1),
-  piano .white-key:hover:nth-child(7n+3) {
-    background-color: rgb(247, 148, 171);
-  }
-  piano .white-key:hover:nth-child(7n+2),
-  piano .white-key:hover:nth-child(7n+5),
-  piano .white-key:hover:nth-child(7n+7) {
-    background-color: rgb(170, 217, 244);
-  }
-  piano .white-key:hover:nth-child(7n+4),
   piano .white-key:hover:nth-child(7n+6) {
     background-color: rgb(247, 241, 160);
   }
+  piano .white-key:hover:nth-child(7n+2),
+  piano .white-key:hover:nth-child(7n+4),
+  piano .white-key:hover:nth-child(7n+7) {
+    background-color: rgb(170, 217, 244);
+  }
+  piano .white-key:hover:nth-child(7n+3),
+  piano .white-key:hover:nth-child(7n+5) {
+    background-color: rgb(247, 148, 171);
+  }
 
   piano .white-key:active:nth-child(7n+1),
-  piano .white-key:active:nth-child(7n+3) {
-    background-color: rgb(240, 41, 93);
-    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
+  piano .white-key:active:nth-child(7n+6) {
+    background-color: rgb(239, 227, 65);
+    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
     transform: translateY(2px);
   }
   piano .white-key:active:nth-child(7n+2),
-  piano .white-key:active:nth-child(7n+5),
+  piano .white-key:active:nth-child(7n+4),
   piano .white-key:active:nth-child(7n+7) {
     background-color: rgb(86, 180, 233);
     box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
     transform: translateY(2px);
   }
-  piano .white-key:active:nth-child(7n+4),
-  piano .white-key:active:nth-child(7n+6) {
-    background-color: rgb(239, 227, 65);
-    box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
+  piano .white-key:active:nth-child(7n+3),
+  piano .white-key:active:nth-child(7n+5) {
+    background-color: rgb(240, 41, 93);
+    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
     transform: translateY(2px);
   }
 
   piano .black-key {
     z-index: 1;
     position: absolute;
-    width: 16px;
+    width: 1.8%;
     height: 100%;
     border: 1px inset rgb(92, 88, 88);
     background: rgb(20, 20, 20);
@@ -304,24 +312,24 @@
     pointer-events: auto;
   }
 
-  /* Yellow: F#(5n+1), D#(5n+5) */
+  /* Red: C#(5n+1), A#(5n+5) */
   piano .black-key.playing:nth-child(5n+1),
   piano .black-key.playing:nth-child(5n+5) {
+    background-color: rgb(240, 41, 93);
+    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
+    transform: translateY(2px);
+  }
+  /* Yellow: D#(5n+2), F#(5n+3) */
+  piano .black-key.playing:nth-child(5n+2),
+  piano .black-key.playing:nth-child(5n+3) {
     background-color: rgb(239, 227, 65);
     box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
     transform: translateY(2px);
   }
-  /* Blue: G#(5n+2) */
-  piano .black-key.playing:nth-child(5n+2) {
+  /* Blue: G#(5n+4) */
+  piano .black-key.playing:nth-child(5n+4) {
     background-color: rgb(86, 180, 233);
     box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
-    transform: translateY(2px);
-  }
-  /* Red: A#(5n+3), C#(5n+4) */
-  piano .black-key.playing:nth-child(5n+3),
-  piano .black-key.playing:nth-child(5n+4) {
-    background-color: rgb(240, 41, 93);
-    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
     transform: translateY(2px);
   }
 
@@ -331,31 +339,31 @@
 
   piano .black-key:hover:nth-child(5n+1),
   piano .black-key:hover:nth-child(5n+5) {
+    background-color: rgb(120, 20, 47);
+  }
+  piano .black-key:hover:nth-child(5n+2),
+  piano .black-key:hover:nth-child(5n+3) {
     background-color: rgb(120, 113, 33);
   }
-  piano .black-key:hover:nth-child(5n+2) {
-    background-color: rgb(43, 90, 117);
-  }
-  piano .black-key:hover:nth-child(5n+3),
   piano .black-key:hover:nth-child(5n+4) {
-    background-color: rgb(120, 20, 47);
+    background-color: rgb(43, 90, 117);
   }
 
   piano .black-key:active:nth-child(5n+1),
   piano .black-key:active:nth-child(5n+5) {
+    background-color: rgb(240, 41, 93);
+    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
+    transform: translateY(2px);
+  }
+  piano .black-key:active:nth-child(5n+2),
+  piano .black-key:active:nth-child(5n+3) {
     background-color: rgb(239, 227, 65);
     box-shadow: 1px 1px 15px 15px rgba(239, 227, 65, 0.25);
     transform: translateY(2px);
   }
-  piano .black-key:active:nth-child(5n+2) {
+  piano .black-key:active:nth-child(5n+4) {
     background-color: rgb(86, 180, 233);
     box-shadow: 1px 1px 15px 15px rgba(86, 180, 233, 0.25);
-    transform: translateY(2px);
-  }
-  piano .black-key:active:nth-child(5n+3),
-  piano .black-key:active:nth-child(5n+4) {
-    background-color: rgb(240, 41, 93);
-    box-shadow: 1px 1px 15px 15px rgba(240, 41, 93, 0.25);
     transform: translateY(2px);
   }
 </style>

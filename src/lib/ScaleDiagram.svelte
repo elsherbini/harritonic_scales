@@ -55,6 +55,11 @@
     max-width: 600px;
     margin: 0 auto;
     display: block;
+    user-select: none;
+  }
+
+  .scale-diagram :global(text) {
+    pointer-events: none;
   }
 
   .scale-diagram :global([data-scale]) {

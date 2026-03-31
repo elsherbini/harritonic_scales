@@ -12,8 +12,8 @@ export function noteToAbc(note: string): string {
   const letter = pc[0];
   const accidental = pc.slice(1); // '', '#', 'b', '##', 'bb'
 
-  // ABC accidental prefix
-  let accPrefix = '';
+  // ABC accidental prefix — always explicit to prevent carry-through
+  let accPrefix = '='; // natural by default
   if (accidental === '#') accPrefix = '^';
   else if (accidental === '##') accPrefix = '^^';
   else if (accidental === 'b') accPrefix = '_';
@@ -79,39 +79,69 @@ export function getAbcKey(root: string, mode: string): { keyLine: string; keySig
 }
 
 /**
- * Convert a note to ABC, adding explicit accidental only if it
- * differs from what the key signature provides.
+ * Initialize a tracker of "active" accidentals from a key signature.
+ * In ABC, accidentals carry through the bar, so we track what's active
+ * for each letter and only emit explicit accidentals when changing state.
  */
-export function noteToAbcInKey(note: string, keySigNotes: Set<string>): string {
-  const pc = Note.pitchClass(note);
-  if (keySigNotes.has(pc)) {
-    // Key signature handles the accidental -- emit just the letter + octave
+function initAccidentalTracker(keySigNotes: Set<string>): Map<string, string> {
+  const tracker = new Map<string, string>();
+  for (const letter of 'ABCDEFG') {
+    tracker.set(letter, ''); // default: natural
+  }
+  for (const pc of keySigNotes) {
     const letter = pc[0];
-    const oct = Note.octave(note);
-    if (oct === null) return '';
+    const acc = pc.slice(1); // '#', 'b', etc.
+    tracker.set(letter, acc);
+  }
+  return tracker;
+}
 
-    let abcLetter: string;
-    let octaveMark = '';
-    if (oct <= 4) {
-      abcLetter = letter.toUpperCase();
-      for (let i = 0; i < 4 - oct; i++) octaveMark += ',';
-    } else {
-      abcLetter = letter.toLowerCase();
-      for (let i = 0; i < oct - 5; i++) octaveMark += "'";
-    }
-    return abcLetter + octaveMark;
+/**
+ * Convert a note to ABC with smart accidentals: only emit an explicit
+ * accidental prefix when it differs from what's currently active for
+ * that letter (from key signature or a prior note in the bar).
+ * Mutates the tracker to reflect the new active accidental.
+ */
+function noteToAbcTracked(note: string, tracker: Map<string, string>): string {
+  const pc = Note.pitchClass(note);
+  const oct = Note.octave(note);
+  if (pc === undefined || oct === null || oct === undefined) return '';
+
+  const letter = pc[0];
+  const accidental = pc.slice(1); // '', '#', 'b', '##', 'bb'
+  const active = tracker.get(letter) ?? '';
+
+  let prefix = '';
+  if (accidental !== active) {
+    if (accidental === '#') prefix = '^';
+    else if (accidental === '##') prefix = '^^';
+    else if (accidental === 'b') prefix = '_';
+    else if (accidental === 'bb') prefix = '__';
+    else prefix = '='; // natural, cancelling a prior accidental
+    tracker.set(letter, accidental);
   }
 
-  // Note is not in the key sig -- use full accidental notation
-  return noteToAbc(note);
+  let abcLetter: string;
+  let octaveMark = '';
+  if (oct <= 4) {
+    abcLetter = letter.toUpperCase();
+    for (let i = 0; i < 4 - oct; i++) octaveMark += ',';
+  } else {
+    abcLetter = letter.toLowerCase();
+    for (let i = 0; i < oct - 5; i++) octaveMark += "'";
+  }
+
+  return prefix + abcLetter + octaveMark;
 }
 
 /**
  * Generate ABC notation for a scale displayed as an ascending run.
+ * Uses smart accidental tracking to avoid cluttering the staff.
  */
 export function scaleToAbc(notes: string[], root: string, mode: string | null): string {
   const { keyLine, keySigNotes } = mode ? getAbcKey(root, mode) : { keyLine: 'K:C clef=treble', keySigNotes: new Set<string>() };
-  const abcNotes = notes.map(n => noteToAbcInKey(n, keySigNotes)).join('');
+  const tracker = initAccidentalTracker(keySigNotes);
+  const abcNotes = notes.map(n => noteToAbcTracked(n, tracker)).join('');
 
   return `X:1\nL:1/4\n${keyLine}${keyLine.includes('clef=') ? '' : ' clef=treble'}\n${abcNotes}`;
 }
@@ -119,11 +149,13 @@ export function scaleToAbc(notes: string[], root: string, mode: string | null): 
 /**
  * Generate ABC notation for a chord sequence (each chord is an array of notes).
  * Chords are rendered as stacked notes in brackets: [CEG][DFA]
+ * Uses smart accidental tracking across all chords (single bar).
  */
 export function sequenceToAbc(chords: string[][], root: string, mode: string): string {
   const { keyLine, keySigNotes } = getAbcKey(root, mode);
+  const tracker = initAccidentalTracker(keySigNotes);
   const abcChords = chords.map(chord => {
-    const notes = chord.map(n => noteToAbcInKey(n, keySigNotes)).join('');
+    const notes = chord.map(n => noteToAbcTracked(n, tracker)).join('');
     return `[${notes}]`;
   }).join('');
 

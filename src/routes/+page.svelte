@@ -269,13 +269,17 @@
     const scale = ALL_SCALES.find(s => s.name === scaleName);
     if (!scale) return;
 
-    // Show scale notes on staff as ascending run
+    // Show scale notes on staff as ascending run, starting from the root
     const scaleNotes = Pcset.notes(scale.chroma);
     const rootChroma = Note.chroma(scale.root)!;
+    const rootIdx = scaleNotes.findIndex(n => Note.chroma(n) === rootChroma);
+    const rotated = rootIdx > 0
+      ? [...scaleNotes.slice(rootIdx), ...scaleNotes.slice(0, rootIdx)]
+      : scaleNotes;
     const ascending: string[] = [];
     let oct = 4;
     let prevChroma = -1;
-    for (const pc of scaleNotes) {
+    for (const pc of rotated) {
       const chroma = Note.chroma(pc)!;
       if (prevChroma >= 0 && chroma <= prevChroma) oct++;
       ascending.push(pc + oct);
