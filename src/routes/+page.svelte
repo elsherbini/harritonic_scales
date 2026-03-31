@@ -1,13 +1,34 @@
 <script lang="ts">
-  import { Pcset, Scale } from 'tonal';
+  import { Chord, Note, Pcset, Scale } from 'tonal';
+  import { Switch } from '@skeletonlabs/skeleton-svelte';
   import { ALL_SCALES } from '$lib/scales';
   import { filterScales, groupByKeyOverlap, countKeyOverlap } from '$lib/filter';
   import type { OverlapGroup } from '$lib/filter';
   import ScaleDiagram from '$lib/ScaleDiagram.svelte';
   import Piano from '$lib/Piano.svelte';
-  import { playSequence, getTonicChord } from '$lib/playback';
+  import { playSequence, getTonicChord, getSequenceChords } from '$lib/playback';
+  import StaffNotation from '$lib/StaffNotation.svelte';
+  import { sequenceToAbc } from '$lib/abc';
 
-  const NOTE_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+  function toFlat(note: string): string {
+    const midi = Note.midi(note + '4');
+    if (midi === null) return note;
+    return Note.pitchClass(Note.fromMidi(midi));
+  }
+
+  function toSharp(note: string): string {
+    const midi = Note.midi(note + '4');
+    if (midi === null) return note;
+    return Note.pitchClass(Note.fromMidiSharps(midi));
+  }
+
+  let useSharpsKey = $state(false);
+  let useSharpsTarget = $state(false);
+  let keyNoteNames = $derived(useSharpsKey ? SHARP_NAMES : FLAT_NAMES);
+  let targetNoteNames = $derived(useSharpsTarget ? SHARP_NAMES : FLAT_NAMES);
 
   const ALL_MAJOR_MODES = Scale.modeNames('major').map(m => m[1]);
   const HARMONIC_MINOR_MODES = Scale.modeNames('harmonic minor').map(m => m[1]);
@@ -39,6 +60,19 @@
     targetRoot = null;
   }
 
+  function toggleTargetSharps() {
+    const convert = useSharpsTarget ? toFlat : toSharp;
+    selectedNotes = new Set([...selectedNotes].map(convert));
+    if (targetRoot) targetRoot = convert(targetRoot);
+    useSharpsTarget = !useSharpsTarget;
+  }
+
+  function toggleKeySharps() {
+    const convert = useSharpsKey ? toFlat : toSharp;
+    if (selectedRoot) selectedRoot = convert(selectedRoot);
+    useSharpsKey = !useSharpsKey;
+  }
+
   // --- Target root note ---
   let targetRoot = $state<string | null>(null);
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -65,6 +99,21 @@
       longPressTimer = null;
     }
   }
+
+  // --- Chord name detection ---
+  let detectedChordName = $derived.by(() => {
+    const notes = [...selectedNotes];
+    if (notes.length < 2) return null;
+    const detected = Chord.detect(notes);
+    if (!detected.length) return null;
+    let name: string;
+    if (targetRoot) {
+      name = detected.find(n => n.startsWith(targetRoot!)) ?? detected[0];
+    } else {
+      name = detected[0];
+    }
+    return name.replace(/M$/, 'Maj');
+  });
 
   // --- Key state ---
   let selectedRoot = $state<string | null>(null);
@@ -140,21 +189,30 @@
     return map;
   });
 
-  // --- Key note dim7 group colors ---
-  const KEY_COLORS: Record<string, string> = {
-    'C': 'rgb(240, 154, 65)', 'Eb': 'rgb(240, 154, 65)', 'Gb': 'rgb(240, 154, 65)', 'A': 'rgb(240, 154, 65)',
-    'Db': 'rgb(119, 65, 240)', 'E': 'rgb(119, 65, 240)', 'G': 'rgb(119, 65, 240)', 'Bb': 'rgb(119, 65, 240)',
-    'F': 'rgb(41, 240, 67)', 'B': 'rgb(41, 240, 67)', 'D': 'rgb(41, 240, 67)', 'Ab': 'rgb(41, 240, 67)',
+  // --- Dim7 group colors by chroma (works for both sharps and flats) ---
+  // Key colors: orange=C/Eb/Gb/A, purple=Db/E/G/Bb, green=D/F/Ab/B
+  const KEY_COLOR_BY_CHROMA: Record<number, string> = {
+    0: 'rgb(240, 154, 65)', 3: 'rgb(240, 154, 65)', 6: 'rgb(240, 154, 65)', 9: 'rgb(240, 154, 65)',
+    1: 'rgb(119, 65, 240)', 4: 'rgb(119, 65, 240)', 7: 'rgb(119, 65, 240)', 10: 'rgb(119, 65, 240)',
+    2: 'rgb(41, 240, 67)', 5: 'rgb(41, 240, 67)', 8: 'rgb(41, 240, 67)', 11: 'rgb(41, 240, 67)',
   };
 
-  let selectedRootColor = $derived(selectedRoot ? KEY_COLORS[selectedRoot] : null);
-
-  // --- Target note dim7 group colors ---
-  const DIM7_COLORS: Record<string, string> = {
-    'C': 'rgb(239, 227, 65)', 'Eb': 'rgb(239, 227, 65)', 'Gb': 'rgb(239, 227, 65)', 'A': 'rgb(239, 227, 65)',
-    'G': 'rgb(240, 41, 93)', 'E': 'rgb(240, 41, 93)', 'Bb': 'rgb(240, 41, 93)', 'Db': 'rgb(240, 41, 93)',
-    'B': 'rgb(86, 180, 233)', 'D': 'rgb(86, 180, 233)', 'F': 'rgb(86, 180, 233)', 'Ab': 'rgb(86, 180, 233)',
+  // Target colors: yellow=C/Eb/Gb/A, red=Db/E/G/Bb, blue=D/F/Ab/B
+  const DIM7_COLOR_BY_CHROMA: Record<number, string> = {
+    0: 'rgb(239, 227, 65)', 3: 'rgb(239, 227, 65)', 6: 'rgb(239, 227, 65)', 9: 'rgb(239, 227, 65)',
+    1: 'rgb(240, 41, 93)', 4: 'rgb(240, 41, 93)', 7: 'rgb(240, 41, 93)', 10: 'rgb(240, 41, 93)',
+    2: 'rgb(86, 180, 233)', 5: 'rgb(86, 180, 233)', 8: 'rgb(86, 180, 233)', 11: 'rgb(86, 180, 233)',
   };
+
+  function keyColor(note: string): string {
+    return KEY_COLOR_BY_CHROMA[Note.chroma(note) ?? 0];
+  }
+
+  function dim7Color(note: string): string {
+    return DIM7_COLOR_BY_CHROMA[Note.chroma(note) ?? 0];
+  }
+
+  let selectedRootColor = $derived(selectedRoot ? keyColor(selectedRoot) : null);
 
   // --- Note highlighting ---
   let selectedChroma = $derived(
@@ -181,6 +239,18 @@
 
   let piano: Piano;
 
+  // --- Staff notation state ---
+  let staffClef = $state<'treble' | 'diminished'>('treble');
+  let staffHighlightIndex = $state<number | null>(null);
+  let activeSequenceChords = $state<string[][] | null>(null);
+
+  let staffAbc = $derived.by(() => {
+    if (activeSequenceChords && selectedKey) {
+      return sequenceToAbc(activeSequenceChords, selectedKey.notes[0], selectedQuality!);
+    }
+    return 'X:1\nL:1/4\nK:C clef=treble\n';
+  });
+
   function handleScaleDiagramClick(scaleName: string) {
     const scale = ALL_SCALES.find(s => s.name === scaleName);
     if (scale) handlePlay(scale);
@@ -195,6 +265,15 @@
     const scaleNotes = Pcset.notes(scale.chroma);
     const tonicChordNotes = getTonicChord(selectedKey.notes[0], selectedQuality!);
 
+    activeSequenceChords = getSequenceChords({
+      tonicRoot: selectedKey.notes[0],
+      tonicChordNotes,
+      targetRoot,
+      targetChordNotes: [...selectedNotes],
+      scaleNotes,
+    });
+    staffHighlightIndex = null;
+
     playSequence({
       sampler,
       tonicRoot: selectedKey.notes[0],
@@ -205,6 +284,7 @@
       onNotesChange: (notes) => piano.setNotesPlaying(notes),
       onSustainOn: () => piano.sustainOn(),
       onSustainOff: () => piano.sustainOff(),
+      onChordIndex: (idx) => { staffHighlightIndex = idx >= 0 ? idx : null; },
     });
   }
 </script>
@@ -215,15 +295,24 @@
 
   <!-- Key Selector -->
   <div class="mb-6">
-    <h2 class="text-sm font-semibold text-surface-500 tracking-wide mb-2">Key: If you are in the key of...</h2>
+    <div class="flex items-center gap-2 mb-2">
+      <h2 class="text-sm font-semibold text-surface-500 tracking-wide">Key: If you are in the key of...</h2>
+      <Switch checked={useSharpsKey} onCheckedChange={() => toggleKeySharps()}>
+        <Switch.Control>
+          <Switch.Thumb />
+        </Switch.Control>
+        <Switch.Label><span class="text-sm font-semibold">{useSharpsKey ? '♯' : '♭'}</span></Switch.Label>
+        <Switch.HiddenInput />
+      </Switch>
+    </div>
     <div class="flex flex-wrap gap-2 mb-3">
-      {#each NOTE_NAMES as note}
+      {#each keyNoteNames as note}
         <button
           class="chip font-mono {selectedRoot === note
             ? ''
             : 'preset-outlined-surface-500'}"
           style={selectedRoot === note
-            ? `background-color: ${KEY_COLORS[note]}; color: var(--color-surface-950);`
+            ? `background-color: ${keyColor(note)}; color: var(--color-surface-950);`
             : ''}
           onclick={() => selectRoot(note)}
         >
@@ -304,16 +393,25 @@
 
   <!-- Target Notes -->
   <div class="mb-6">
-    <h2 class="text-sm font-semibold text-surface-500 tracking-wide mb-2">Target Notes: And you are playing a chord with these notes...</h2>
+    <div class="flex items-center gap-2 mb-2">
+      <h2 class="text-sm font-semibold text-surface-500 tracking-wide">Target Notes: And you are playing a chord with these notes...</h2>
+      <Switch checked={useSharpsTarget} onCheckedChange={() => toggleTargetSharps()}>
+        <Switch.Control>
+          <Switch.Thumb />
+        </Switch.Control>
+        <Switch.Label><span class="text-sm font-semibold">{useSharpsTarget ? '♯' : '♭'}</span></Switch.Label>
+        <Switch.HiddenInput />
+      </Switch>
+    </div>
     <div class="flex flex-wrap gap-2 mb-3">
-      {#each NOTE_NAMES as note}
+      {#each targetNoteNames as note}
         <div class="flex flex-col items-center gap-1">
           <button
             class="chip font-mono {selectedNotes.has(note)
               ? ''
               : 'preset-outlined-surface-500'}"
             style="{selectedNotes.has(note)
-              ? `background-color: ${DIM7_COLORS[note]}; color: var(--color-surface-950);`
+              ? `background-color: ${dim7Color(note)}; color: var(--color-surface-950);`
               : ''}{targetRoot === note
               ? ' border: 3px solid light-dark(var(--color-surface-950), var(--color-surface-50));'
               : ''}"
@@ -334,9 +432,9 @@
             <span
               class="inline-block rounded-full border-2"
               style="width: 0.75rem; height: 0.75rem; {selectedNotes.has(note)
-                ? `border-color: ${DIM7_COLORS[note]};`
+                ? `border-color: ${dim7Color(note)};`
                 : 'border-color: var(--color-surface-400); opacity: 0.3;'}{targetRoot === note
-                ? ` background-color: ${DIM7_COLORS[note]};`
+                ? ` background-color: ${dim7Color(note)};`
                 : ''}"
             ></span>
           </button>
@@ -352,6 +450,9 @@
         <span class="text-xs text-surface-400">Root</span>
       </div>
     </div>
+    {#if detectedChordName}
+      <p class="text-sm text-surface-500">Chord: {detectedChordName}</p>
+    {/if}
   </div>
 
   <!-- Results Count -->
@@ -362,6 +463,21 @@
   <!-- Scale Diagram -->
   <div class="mb-6">
     <ScaleDiagram {scaleSaturations} onScaleClick={handleScaleDiagramClick} />
+  </div>
+
+  <!-- Staff Notation -->
+  <div class="mb-6">
+    <div class="flex items-center gap-2 mb-2">
+      <h2 class="text-sm font-semibold text-surface-500 tracking-wide">Staff</h2>
+      <Switch checked={staffClef === 'diminished'} onCheckedChange={() => { staffClef = staffClef === 'treble' ? 'diminished' : 'treble'; }}>
+        <Switch.Control>
+          <Switch.Thumb />
+        </Switch.Control>
+        <Switch.Label><span class="text-sm font-semibold">{staffClef === 'treble' ? 'Traditional' : 'Diminished'}</span></Switch.Label>
+        <Switch.HiddenInput />
+      </Switch>
+    </div>
+    <StaffNotation abc={staffAbc} clef={staffClef} highlightIndex={staffHighlightIndex} />
   </div>
 
   <!-- Piano -->
