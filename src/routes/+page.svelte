@@ -58,6 +58,8 @@
   function clearSelection() {
     selectedNotes = new Set();
     targetRoot = null;
+    activeSequenceChords = null;
+    staffHighlightIndex = null;
   }
 
   function toggleTargetSharps() {
@@ -132,15 +134,22 @@
 
   function selectRoot(root: string) {
     selectedRoot = selectedRoot === root ? null : root;
+    activeSequenceChords = null;
+    staffHighlightIndex = null;
   }
 
   function selectQuality(quality: string) {
     selectedQuality = selectedQuality === quality ? null : quality;
+    activeSequenceChords = null;
+    staffHighlightIndex = null;
   }
 
   function clearKey() {
     selectedRoot = null;
     selectedQuality = null;
+    activeSequenceChords = null;
+    activeScaleNotes = null;
+    staffHighlightIndex = null;
   }
 
   // --- Play hint ---
