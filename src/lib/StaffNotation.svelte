@@ -6,11 +6,15 @@
     clef = 'treble',
     highlightIndex = null,
     diminishedColors = 'metaharmony',
+    noteGroups,
+    onNoteClick,
   }: {
     abc?: string;
     clef?: 'treble' | 'diminished';
     highlightIndex?: number | null;
     diminishedColors?: 'metaharmony' | 'bw' | 'elements';
+    noteGroups?: string[][];
+    onNoteClick?: (notes: string[]) => void;
   } = $props();
 
   let containerEl: HTMLDivElement;
@@ -35,6 +39,31 @@
       scale: 1.5,
       add_classes: true,
       ...(clef === 'diminished' ? { diminishedColors } : {}),
+      clickListener: onNoteClick ? (abcElem: any) => {
+        if (!noteGroups || abcElem.el_type !== 'note') return;
+        // Count note tokens in the ABC body before startChar to find the index
+        const bodyStart = abcToRender.lastIndexOf('\n') + 1;
+        const before = abcToRender.substring(bodyStart, abcElem.startChar);
+        let idx = 0;
+        let i = 0;
+        while (i < before.length) {
+          if (before[i] === '[') {
+            const end = before.indexOf(']', i);
+            if (end !== -1) { idx++; i = end + 1; } else i++;
+          } else if (/[A-Ga-g]/.test(before[i])) {
+            idx++;
+            i++;
+            while (i < before.length && /[,']/.test(before[i])) i++;
+          } else {
+            i++;
+          }
+        }
+        const notes = noteGroups[idx];
+        if (notes) {
+          console.log('Staff click — index:', idx, 'notes:', notes);
+          onNoteClick(notes);
+        }
+      } : undefined,
     });
   });
 

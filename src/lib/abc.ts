@@ -79,37 +79,52 @@ export function getAbcKey(root: string, mode: string): { keyLine: string; keySig
 }
 
 /**
- * Initialize a tracker of "active" accidentals from a key signature.
- * In ABC, accidentals carry through the bar, so we track what's active
- * for each letter and only emit explicit accidentals when changing state.
+ * Get the ABC staff position key for a note. In ABC (and standard notation),
+ * accidentals only carry through for the same staff position — e.g. _E (Eb4)
+ * does NOT carry to e (E5). We track by the ABC letter+octave representation.
  */
-function initAccidentalTracker(keySigNotes: Set<string>): Map<string, string> {
-  const tracker = new Map<string, string>();
+function abcStaffPosition(letter: string, oct: number): string {
+  if (oct <= 4) {
+    return letter.toUpperCase() + ','.repeat(Math.max(0, 4 - oct));
+  }
+  return letter.toLowerCase() + "'".repeat(Math.max(0, oct - 5));
+}
+
+/**
+ * Initialize a tracker of "active" accidentals from a key signature.
+ * Returns a Map keyed by staff position and a default accidental map
+ * from the key signature (keyed by letter name, applied to any octave).
+ */
+function initAccidentalTracker(keySigNotes: Set<string>): { overrides: Map<string, string>; keySigAccidentals: Map<string, string> } {
+  const keySigAccidentals = new Map<string, string>();
   for (const letter of 'ABCDEFG') {
-    tracker.set(letter, ''); // default: natural
+    keySigAccidentals.set(letter, '');
   }
   for (const pc of keySigNotes) {
-    const letter = pc[0];
-    const acc = pc.slice(1); // '#', 'b', etc.
-    tracker.set(letter, acc);
+    keySigAccidentals.set(pc[0], pc.slice(1));
   }
-  return tracker;
+  return { overrides: new Map(), keySigAccidentals };
 }
 
 /**
  * Convert a note to ABC with smart accidentals: only emit an explicit
  * accidental prefix when it differs from what's currently active for
- * that letter (from key signature or a prior note in the bar).
+ * that staff position (from key signature or a prior note in the bar).
  * Mutates the tracker to reflect the new active accidental.
  */
-function noteToAbcTracked(note: string, tracker: Map<string, string>): string {
+function noteToAbcTracked(note: string, tracker: { overrides: Map<string, string>; keySigAccidentals: Map<string, string> }): string {
   const pc = Note.pitchClass(note);
   const oct = Note.octave(note);
   if (pc === undefined || oct === null || oct === undefined) return '';
 
   const letter = pc[0];
   const accidental = pc.slice(1); // '', '#', 'b', '##', 'bb'
-  const active = tracker.get(letter) ?? '';
+  const pos = abcStaffPosition(letter, oct);
+
+  // What's active for this staff position? Check overrides first, then key sig.
+  const active = tracker.overrides.has(pos)
+    ? tracker.overrides.get(pos)!
+    : (tracker.keySigAccidentals.get(letter) ?? '');
 
   let prefix = '';
   if (accidental !== active) {
@@ -118,20 +133,10 @@ function noteToAbcTracked(note: string, tracker: Map<string, string>): string {
     else if (accidental === 'b') prefix = '_';
     else if (accidental === 'bb') prefix = '__';
     else prefix = '='; // natural, cancelling a prior accidental
-    tracker.set(letter, accidental);
+    tracker.overrides.set(pos, accidental);
   }
 
-  let abcLetter: string;
-  let octaveMark = '';
-  if (oct <= 4) {
-    abcLetter = letter.toUpperCase();
-    for (let i = 0; i < 4 - oct; i++) octaveMark += ',';
-  } else {
-    abcLetter = letter.toLowerCase();
-    for (let i = 0; i < oct - 5; i++) octaveMark += "'";
-  }
-
-  return prefix + abcLetter + octaveMark;
+  return prefix + pos;
 }
 
 /**
@@ -149,7 +154,7 @@ export function scaleToAbc(notes: string[], root: string, mode: string | null): 
 /**
  * Generate ABC notation for a chord sequence (each chord is an array of notes).
  * Chords are rendered as stacked notes in brackets: [CEG][DFA]
- * Uses smart accidental tracking across all chords (single bar).
+ * Uses octave-aware accidental tracking across all chords (single bar).
  */
 export function sequenceToAbc(chords: string[][], root: string, mode: string): string {
   const { keyLine, keySigNotes } = getAbcKey(root, mode);

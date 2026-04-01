@@ -81,11 +81,18 @@ describe('scaleToAbc', () => {
     expect(abc).toContain('_B=B');
   });
 
-  it('does not repeat same accidental for same letter', () => {
-    // Two Bbs in a row in C major — only first needs _
+  it('does not repeat same accidental for same staff position', () => {
+    // Two Bb4s — only first needs _ (same staff position)
+    const notes = ['Bb4', 'Bb4'];
+    const abc = scaleToAbc(notes, 'C', 'major');
+    expect(abc).toContain('_BB');
+  });
+
+  it('repeats accidental for different octaves', () => {
+    // Bb3 and Bb4 are different staff positions — both need _
     const notes = ['Bb3', 'Bb4'];
     const abc = scaleToAbc(notes, 'C', 'major');
-    expect(abc).toContain('_B,B');
+    expect(abc).toContain('_B,_B');
   });
 });
 

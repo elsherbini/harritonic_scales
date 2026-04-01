@@ -6,7 +6,7 @@
   import type { OverlapGroup } from '$lib/filter';
   import ScaleDiagram from '$lib/ScaleDiagram.svelte';
   import Piano from '$lib/Piano.svelte';
-  import { playSequence, getTonicChord, getSequenceChords } from '$lib/playback';
+  import { playSequence, playAscendingScale, getTonicChord, getSequenceChords, getAscendingScaleItems } from '$lib/playback';
   import StaffNotation from '$lib/StaffNotation.svelte';
   import { scaleToAbc, sequenceToAbc } from '$lib/abc';
 
@@ -106,6 +106,12 @@
   let detectedChordName = $derived.by(() => {
     const notes = [...selectedNotes];
     if (notes.length < 2) return null;
+    // Chord.detect treats first note as bass — put targetRoot first to avoid slash chord names
+    if (targetRoot && notes.includes(targetRoot)) {
+      const rest = notes.filter(n => n !== targetRoot);
+      notes.length = 0;
+      notes.push(targetRoot, ...rest);
+    }
     const detected = Chord.detect(notes);
     if (!detected.length) return null;
     let name: string;
@@ -255,6 +261,12 @@
   let activeScaleNotes = $state<string[] | null>(null);
   let activeScaleRoot = $state<string | null>(null);
 
+  let staffNoteGroups = $derived.by<string[][] | undefined>(() => {
+    if (activeSequenceChords) return activeSequenceChords;
+    if (activeScaleNotes) return activeScaleNotes.map(n => [n]);
+    return undefined;
+  });
+
   let staffAbc = $derived.by(() => {
     if (activeSequenceChords && selectedKey) {
       return sequenceToAbc(activeSequenceChords, selectedKey.notes[0], selectedQuality!);
@@ -325,6 +337,51 @@
       onSustainOff: () => piano.sustainOff(),
       onChordIndex: (idx) => { staffHighlightIndex = idx >= 0 ? idx : null; },
     });
+  }
+
+  async function handlePlayScale(scale: { name: string; chroma: string; root: string }) {
+    if (!selectedKey || !targetRoot) return;
+    await piano.ensureReady();
+    const sampler = piano.getSampler();
+    if (!sampler) return;
+
+    const scaleNotes = Pcset.notes(scale.chroma);
+    const tonicChordNotes = getTonicChord(selectedKey.notes[0], selectedQuality!);
+
+    activeSequenceChords = getAscendingScaleItems({
+      tonicRoot: selectedKey.notes[0],
+      tonicChordNotes,
+      targetRoot,
+      targetChordNotes: [...selectedNotes],
+      scaleNotes,
+    });
+    staffHighlightIndex = null;
+
+    playAscendingScale({
+      sampler,
+      tonicRoot: selectedKey.notes[0],
+      tonicChordNotes,
+      targetRoot,
+      targetChordNotes: [...selectedNotes],
+      scaleNotes,
+      onNotesChange: (notes) => piano.setNotesPlaying(notes),
+      onSustainOn: () => piano.sustainOn(),
+      onSustainOff: () => piano.sustainOff(),
+      onChordIndex: (idx) => { staffHighlightIndex = idx >= 0 ? idx : null; },
+    });
+  }
+
+  let staffClickTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function handleStaffNoteClick(notes: string[]) {
+    console.log('Staff click — notes:', notes);
+    await piano.ensureReady();
+    const sampler = piano.getSampler();
+    if (!sampler) return;
+    sampler.triggerAttackRelease(notes, '2n');
+    if (staffClickTimer) clearTimeout(staffClickTimer);
+    piano.setNotesPlaying(notes);
+    staffClickTimer = setTimeout(() => piano.setNotesPlaying([]), 1000);
   }
 </script>
 
@@ -516,7 +573,7 @@
         <Switch.HiddenInput />
       </Switch>
     </div>
-    <StaffNotation abc={staffAbc} clef={staffClef} highlightIndex={staffHighlightIndex} />
+    <StaffNotation abc={staffAbc} clef={staffClef} highlightIndex={staffHighlightIndex} noteGroups={staffNoteGroups} onNoteClick={handleStaffNoteClick} />
   </div>
 
   <!-- Piano -->
@@ -546,8 +603,14 @@
                   class="btn-icon btn-icon-sm preset-tonal-primary {playHint ? '' : 'ml-auto'}"
                   disabled={!selectedKey || !targetRoot}
                   onclick={() => handlePlay(scale)}
-                  title="Play sequence"
+                  title="Play chord walk-up"
                 >&#9654;</button>
+                <button
+                  class="btn-icon btn-icon-sm preset-tonal-secondary"
+                  disabled={!selectedKey || !targetRoot}
+                  onclick={() => handlePlayScale(scale)}
+                  title="Play ascending scale"
+                >&#8593;</button>
               </div>
               <div class="flex gap-1.5 flex-wrap">
                 {#each Pcset.notes(scale.chroma) as note}
@@ -584,8 +647,14 @@
                     class="btn-icon btn-icon-sm preset-tonal-primary {playHint ? '' : 'ml-auto'}"
                     disabled={!selectedKey || !targetRoot}
                     onclick={() => handlePlay(scale)}
-                    title="Play sequence"
+                    title="Play chord walk-up"
                   >&#9654;</button>
+                  <button
+                    class="btn-icon btn-icon-sm preset-tonal-secondary"
+                    disabled={!selectedKey || !targetRoot}
+                    onclick={() => handlePlayScale(scale)}
+                    title="Play ascending scale"
+                  >&#8593;</button>
                 </div>
                 <div class="flex gap-1.5 flex-wrap">
                   {#each Pcset.notes(scale.chroma) as note}

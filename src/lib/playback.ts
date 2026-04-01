@@ -224,6 +224,164 @@ export type SequenceChordsParams = {
   octave?: number;
 };
 
+/**
+ * Build ascending voiced notes starting from targetRoot within the scale.
+ */
+function buildAscendingNotes(targetRoot: string, scaleNotes: string[], startOctave: number): string[] {
+  const rootChroma = Note.chroma(targetRoot)!;
+  const rootIdx = scaleNotes.findIndex(n => Note.chroma(n) === rootChroma);
+  const rotated = rootIdx > 0
+    ? [...scaleNotes.slice(rootIdx), ...scaleNotes.slice(0, rootIdx)]
+    : [...scaleNotes];
+
+  const notes: string[] = [];
+  let oct = startOctave;
+  let prevChroma = -1;
+  for (const pc of rotated) {
+    const chroma = Note.chroma(pc)!;
+    if (prevChroma >= 0 && chroma <= prevChroma) oct++;
+    notes.push(pc + oct);
+    prevChroma = chroma;
+  }
+  return notes;
+}
+
+/**
+ * Build target high voicing: closed voicing + octave of root on top.
+ */
+function buildTargetHighVoicing(targetRoot: string, targetChordNotes: string[], lowOctave: number, scaleNotes: string[]): string[] {
+  const low = getClosedVoicing(targetRoot, targetChordNotes, lowOctave);
+  // Find the root note's octave in the ascending notes to get the high root
+  const ascending = buildAscendingNotes(targetRoot, scaleNotes, lowOctave);
+  // Last note of the ascending scale is one octave above the first
+  // But we want the root specifically one octave up
+  const rootChroma = Note.chroma(targetRoot)!;
+  const firstRoot = ascending.find(n => Note.chroma(n) === rootChroma);
+  const firstRootOct = firstRoot ? Note.octave(firstRoot)! : lowOctave;
+  const highRoot = targetRoot + (firstRootOct + 1);
+  return [...low, highRoot];
+}
+
+/**
+ * Play ascending scale sequence:
+ * tonic(2) -> target chord(2) -> ascending scale x8(half-beats, bass held) -> target high(2) -> tonic(2)
+ */
+export function playAscendingScale(params: SequenceParams): void {
+  const {
+    sampler,
+    tonicRoot,
+    tonicChordNotes,
+    targetRoot,
+    scaleNotes,
+    octave = 4,
+    bpm,
+    onNotesChange,
+    onSustainOn,
+    onSustainOff,
+    onChordIndex,
+  } = params;
+
+  const transport = Tone.getTransport();
+  transport.cancel();
+  transport.stop();
+  transport.position = 0;
+  if (bpm != null) transport.bpm.value = bpm;
+
+  const lowOctave = octave - 1;
+  const tonicVoicing = getClosedVoicing(tonicRoot, tonicChordNotes, octave);
+  const tonicBass = tonicRoot + (octave - 1);
+  const targetVoicingLow = getClosedVoicing(targetRoot, params.targetChordNotes, lowOctave);
+  const targetBass = targetRoot + (lowOctave - 1);
+  const targetVoicingHigh = buildTargetHighVoicing(targetRoot, params.targetChordNotes, lowOctave, scaleNotes);
+
+  const ascendingNotes = buildAscendingNotes(targetRoot, scaleNotes, lowOctave);
+
+  type ChordEvent = { time: string; notes: string[]; bass: string; duration: string };
+  const events: ChordEvent[] = [
+    // Bar 0: tonic(2 beats) + target chord(2 beats)
+    { time: '0:0', notes: tonicVoicing, bass: tonicBass, duration: '0:2' },
+    { time: '0:2', notes: targetVoicingLow, bass: targetBass, duration: '0:2' },
+  ];
+
+  // Bar 1: ascending scale at half-beats (eighth notes), 8 notes
+  const walkTimes = [
+    '1:0:0', '1:0:2', '1:1:0', '1:1:2',
+    '1:2:0', '1:2:2', '1:3:0', '1:3:2',
+  ];
+  for (let i = 0; i < ascendingNotes.length; i++) {
+    events.push({
+      time: walkTimes[i],
+      notes: [ascendingNotes[i]],
+      bass: targetBass,
+      duration: '0:0:2',
+    });
+  }
+
+  // Bar 2: target high(2 beats) + tonic(2 beats)
+  events.push(
+    { time: '2:0', notes: targetVoicingHigh, bass: targetBass, duration: '0:2' },
+    { time: '2:2', notes: tonicVoicing, bass: tonicBass, duration: '0:2' },
+  );
+
+  // Schedule all events
+  for (let eventIdx = 0; eventIdx < events.length; eventIdx++) {
+    const ev = events[eventIdx];
+    const allNotes = [...ev.notes, ev.bass];
+
+    transport.schedule((time) => {
+      onSustainOff?.();
+      sampler.triggerAttack(allNotes, time);
+      onSustainOn?.();
+      onNotesChange?.(allNotes);
+      onChordIndex?.(eventIdx);
+    }, ev.time);
+
+    transport.schedule((time) => {
+      onSustainOff?.();
+      sampler.triggerRelease(allNotes, time);
+      onNotesChange?.([]);
+    }, Tone.Time(ev.time).toSeconds() + Tone.Time(ev.duration).toSeconds());
+  }
+
+  // Stop transport after sequence ends (3 bars)
+  transport.schedule(() => {
+    transport.stop();
+    onNotesChange?.([]);
+    onChordIndex?.(-1);
+  }, '3:0');
+
+  transport.start();
+}
+
+/**
+ * Get the note groups for ascending scale display on staff.
+ * Returns 12 items: tonic, target low, 8 single notes, target high, tonic.
+ */
+export function getAscendingScaleItems(params: SequenceChordsParams): string[][] {
+  const {
+    tonicRoot,
+    tonicChordNotes,
+    targetRoot,
+    targetChordNotes,
+    scaleNotes,
+    octave = 4,
+  } = params;
+
+  const lowOctave = octave - 1;
+  const tonicVoicing = getClosedVoicing(tonicRoot, tonicChordNotes, octave);
+  const targetVoicingLow = getClosedVoicing(targetRoot, targetChordNotes, lowOctave);
+  const targetVoicingHigh = buildTargetHighVoicing(targetRoot, targetChordNotes, lowOctave, scaleNotes);
+  const ascendingNotes = buildAscendingNotes(targetRoot, scaleNotes, lowOctave);
+
+  return [
+    tonicVoicing,
+    targetVoicingLow,
+    ...ascendingNotes.map(n => [n]),
+    targetVoicingHigh,
+    tonicVoicing,
+  ];
+}
+
 export function getSequenceChords(params: SequenceChordsParams): string[][] {
   const {
     tonicRoot,
