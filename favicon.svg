@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Yellow diamond (top) -->
-  <polygon points="32,4 44,20 32,36 20,20" fill="rgb(239,227,65)"/>
-  <!-- Red diamond (bottom-left) -->
-  <polygon points="19,28 31,44 19,60 7,44" fill="rgb(240,41,93)"/>
-  <!-- Blue diamond (bottom-right) -->
-  <polygon points="45,28 57,44 45,60 33,44" fill="rgb(86,180,233)"/>
+  <!-- Red diamond (top-left) -->
+  <polygon points="19,4 31,20 19,36 7,20" fill="rgb(240,41,93)"/>
+  <!-- Yellow diamond (top-right) -->
+  <polygon points="45,4 57,20 45,36 33,20" fill="rgb(239,227,65)"/>
+  <!-- Blue diamond (bottom-center) -->
+  <polygon points="32,28 44,44 32,60 20,44" fill="rgb(86,180,233)"/>
 </svg>
